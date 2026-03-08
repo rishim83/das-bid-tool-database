@@ -1,0 +1,360 @@
+"use client";
+
+import React, { useState } from "react";
+import type { TechnologyQuote, ColoSite } from "@/types";
+import { formatCurrency } from "@/lib/calculations";
+import { TECHNOLOGY_LABELS, TECHNOLOGY_DOT } from "@/lib/constants";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { ChevronRight, ChevronDown } from "lucide-react";
+
+// Lines 5 and 6 are folded into Install (2) and PM (4) sub-rows
+const FOLDED_ITEMS = new Set([5, 6]);
+
+// Formulas for simple (non-compound) main rows
+const SIMPLE_FORMULAS: Record<number, string> = {
+  1: "SUM(RF Line Items) × Sub Mark Up",
+  3: "Equipment Cost × Material Safety × Mark Up",
+};
+
+interface SubRowDef {
+  label: string;
+  formula: string;
+  getValue: (coloId: string) => number;
+  total: number;
+}
+
+interface Props {
+  quote: TechnologyQuote;
+  coloSites: ColoSite[];
+  rentalMarkupCost?: number;
+  adminPercent?: number;
+  subContractorTotal?: number;
+  taxPercent?: number;
+  installTravelActive?: boolean;
+}
+
+function FormulaCell({
+  label,
+  formula,
+  className,
+}: {
+  label: React.ReactNode;
+  formula: string;
+  className?: string;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className={`cursor-default ${className ?? ""}`}>{label}</span>
+      </TooltipTrigger>
+      <TooltipContent side="right" sideOffset={8}>
+        <span className="font-mono text-[11px]">{formula}</span>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+export function QuoteTable({
+  quote,
+  coloSites,
+  rentalMarkupCost = 0,
+  adminPercent = 0,
+  subContractorTotal = 0,
+  taxPercent = 0,
+  installTravelActive = false,
+}: Props) {
+  const tableLabel = TECHNOLOGY_LABELS[quote.type];
+  const dotColor = TECHNOLOGY_DOT[quote.type];
+  const [expandedLines, setExpandedLines] = useState<Set<number>>(new Set());
+  const isSingleColo = coloSites.length === 1;
+
+  const toggleExpand = (item: number) => {
+    setExpandedLines((prev) => {
+      const next = new Set(prev);
+      if (next.has(item)) next.delete(item);
+      else next.add(item);
+      return next;
+    });
+  };
+
+  // Look up folded lines for compound display
+  const installTravelLine = quote.lines.find((l) => l.item === 6);
+  const pmTravelLine = quote.lines.find((l) => l.item === 5);
+
+  return (
+    <TooltipProvider>
+      <div className="border border-border/60 rounded-lg overflow-hidden card-elevated bg-card">
+        <div className="px-4 py-2.5 border-b border-border/50 header-gradient-accent flex items-center gap-2.5">
+          <div className={`h-2 w-2 rounded-full ${dotColor}`} />
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {tableLabel} &mdash; Quote
+          </h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border/50 bg-card">
+                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground w-10">#</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground min-w-[200px]">Description</th>
+                {!isSingleColo && coloSites.map((colo) => (
+                  <th key={colo.id} className="px-3 py-2 text-right text-xs font-medium text-muted-foreground min-w-[120px]">
+                    {colo.name}
+                  </th>
+                ))}
+                <th className="px-3 py-2 text-right text-xs font-medium text-muted-foreground min-w-[120px]">
+                  {isSingleColo ? "Price" : "Total"}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {quote.lines.map((line) => {
+                // Lines 5 and 6 are rendered as sub-rows of PM and Install — skip as main rows
+                if (FOLDED_ITEMS.has(line.item)) return null;
+
+                const isInstall = line.item === 2;
+                const isEquipment = line.item === 3;
+                const isPM = line.item === 4;
+                const isExpanded = expandedLines.has(line.item);
+
+                // ── Build sub-rows ───────────────────────────────────
+                const subRows: SubRowDef[] = [];
+
+                if (isInstall) {
+                  // Install Labor (line 2 base)
+                  subRows.push({
+                    label: "Install Labor",
+                    formula: "Labor Hours × Hourly Rate × Labor Safety",
+                    getValue: (coloId) => line.values[coloId] || 0,
+                    total: line.totalPrice,
+                  });
+                  // Install Travel (line 6 folded in)
+                  if (installTravelLine) {
+                    subRows.push({
+                      label: "Install Travel",
+                      formula: installTravelActive
+                        ? "Per Diem + Travel Labor + Airfare + Lodging + Fuel (× T&I Markup)"
+                        : "Labor Hours × Travel per Day",
+                      getValue: (coloId) => installTravelLine.values[coloId] || 0,
+                      total: installTravelLine.totalPrice,
+                    });
+                  }
+                  // Rental Equipment
+                  if (rentalMarkupCost > 0) {
+                    subRows.push({
+                      label: "Rental Equipment",
+                      formula: "Rental Total × T&I Markup",
+                      getValue: (coloId) => {
+                        const base = line.values[coloId] || 0;
+                        const share = line.totalPrice > 0 ? base / line.totalPrice : 1 / coloSites.length;
+                        return rentalMarkupCost * share;
+                      },
+                      total: rentalMarkupCost,
+                    });
+                  }
+                  // Subcontractors (per-tech — no per-COLO split)
+                  if (subContractorTotal > 0) {
+                    subRows.push({
+                      label: "Subcontractors",
+                      formula: "Sum of Subs × Sub Mark Up",
+                      getValue: () => 0,
+                      total: subContractorTotal,
+                    });
+                  }
+                }
+
+                const equipTaxTotal = taxPercent > 0 ? line.totalPrice * (taxPercent / 100) : 0;
+                if (isEquipment && equipTaxTotal > 0) {
+                  subRows.push({
+                    label: "Equipment",
+                    formula: "Equipment Cost × Material Contingency × Equipment Mark Up",
+                    getValue: (coloId) => line.values[coloId] || 0,
+                    total: line.totalPrice,
+                  });
+                  subRows.push({
+                    label: "Tax",
+                    formula: `${taxPercent}% × Equipment Cost`,
+                    getValue: (coloId) => (line.values[coloId] || 0) * (taxPercent / 100),
+                    total: equipTaxTotal,
+                  });
+                }
+
+                if (isPM) {
+                  // PM base (line 4)
+                  subRows.push({
+                    label: "PM",
+                    formula: "(Labor Hours ÷ # Techs) × PM on Job % × PM Hourly Rate",
+                    getValue: (coloId) => line.values[coloId] || 0,
+                    total: line.totalPrice,
+                  });
+                  // PM Travel (line 5 folded in)
+                  if (pmTravelLine) {
+                    subRows.push({
+                      label: "PM Travel",
+                      formula: "PM Trips × PM Total per Trip",
+                      getValue: (coloId) => pmTravelLine.values[coloId] || 0,
+                      total: pmTravelLine.totalPrice,
+                    });
+                  }
+                  // Admin
+                  if (adminPercent > 0) {
+                    subRows.push({
+                      label: "Admin",
+                      formula: `${adminPercent}% × PM`,
+                      getValue: (coloId) => (line.values[coloId] || 0) * (adminPercent / 100),
+                      total: line.totalPrice * (adminPercent / 100),
+                    });
+                  }
+                }
+
+                // Install and PM always have 2+ sub-rows → always expandable
+                const hasSubRows = subRows.length >= 2;
+
+                // ── Main row display values (sum of all components) ──
+                const getDisplayValue = (coloId: string) => {
+                  const base = line.values[coloId] || 0;
+                  if (isInstall) {
+                    const travelVal = installTravelLine?.values[coloId] || 0;
+                    const rentalShare = rentalMarkupCost > 0
+                      ? rentalMarkupCost * (line.totalPrice > 0 ? base / line.totalPrice : 1 / coloSites.length)
+                      : 0;
+                    return base + travelVal + rentalShare;
+                  }
+                  if (isPM) {
+                    const travelVal = pmTravelLine?.values[coloId] || 0;
+                    const adminVal = base * (adminPercent / 100);
+                    return base + travelVal + adminVal;
+                  }
+                  return base;
+                };
+
+                const displayTotal = isInstall
+                  ? line.totalPrice + (installTravelLine?.totalPrice || 0) + rentalMarkupCost + subContractorTotal
+                  : isEquipment
+                  ? line.totalPrice + equipTaxTotal
+                  : isPM
+                  ? line.totalPrice + (pmTravelLine?.totalPrice || 0) + line.totalPrice * (adminPercent / 100)
+                  : line.totalPrice;
+
+                // ── Main row formula tooltip ─────────────────────────
+                let mainFormula: string;
+                if (isInstall) {
+                  const parts = ["Install Labor", "Install Travel"];
+                  if (rentalMarkupCost > 0) parts.push("Rental Equipment");
+                  if (subContractorTotal > 0) parts.push("Subcontractors");
+                  mainFormula = parts.join(" + ");
+                } else if (isEquipment && equipTaxTotal > 0) {
+                  mainFormula = `Equipment Cost + Tax (${taxPercent}%)`;
+                } else if (isPM) {
+                  const parts = ["PM", "PM Travel"];
+                  if (adminPercent > 0) parts.push(`Admin (${adminPercent}%)`);
+                  mainFormula = parts.join(" + ");
+                } else {
+                  mainFormula = SIMPLE_FORMULAS[line.item] ?? "";
+                }
+
+                return (
+                  <React.Fragment key={line.item}>
+                    <tr className="border-t border-border/25 hover:bg-accent/30 transition-colors">
+                      <td className="px-3 py-1.5 text-xs text-muted-foreground/60 tabular-nums">{line.item}</td>
+                      <td className="px-3 py-1.5 text-sm">
+                        <div className="flex items-center gap-1.5">
+                          {hasSubRows && (
+                            <button
+                              onClick={() => toggleExpand(line.item)}
+                              className="h-4 w-4 flex items-center justify-center text-muted-foreground/50 hover:text-muted-foreground transition-colors rounded shrink-0"
+                            >
+                              {isExpanded
+                                ? <ChevronDown className="h-3 w-3" />
+                                : <ChevronRight className="h-3 w-3" />
+                              }
+                            </button>
+                          )}
+                          {mainFormula ? (
+                            <FormulaCell label={line.description} formula={mainFormula} />
+                          ) : (
+                            <span>{line.description}</span>
+                          )}
+                        </div>
+                      </td>
+                      {!isSingleColo && coloSites.map((colo) => (
+                        <td key={colo.id} className="px-3 py-1.5 text-right font-mono text-xs tabular-nums text-muted-foreground">
+                          {formatCurrency(getDisplayValue(colo.id))}
+                        </td>
+                      ))}
+                      <td className="px-3 py-1.5 text-right font-mono text-xs tabular-nums font-medium">
+                        {formatCurrency(displayTotal)}
+                      </td>
+                    </tr>
+
+                    {/* Expanded sub-rows */}
+                    {hasSubRows && isExpanded && subRows.map((subRow) => (
+                      <tr key={subRow.label} className="border-t border-border/15 bg-muted/10">
+                        <td className="px-3 py-1 text-xs text-muted-foreground/40" />
+                        <td className="px-3 py-1 pl-8">
+                          <FormulaCell
+                            label={`└ ${subRow.label}`}
+                            formula={subRow.formula}
+                            className="text-xs text-muted-foreground"
+                          />
+                        </td>
+                        {!isSingleColo && coloSites.map((colo) => (
+                          <td key={colo.id} className="px-3 py-1 text-right font-mono text-xs tabular-nums text-muted-foreground/60">
+                            {formatCurrency(subRow.getValue(colo.id))}
+                          </td>
+                        ))}
+                        <td className="px-3 py-1 text-right font-mono text-xs tabular-nums text-muted-foreground">
+                          {formatCurrency(subRow.total)}
+                        </td>
+                      </tr>
+                    ))}
+
+                  </React.Fragment>
+                );
+              })}
+
+              {/* Table total row — sums all lines (1–6) + rental + admin + materials */}
+              <tr className="border-t-2 border-primary/20 total-row-gradient">
+                <td className="px-3 py-2"></td>
+                <td className="px-3 py-2 font-semibold text-sm">Total</td>
+                {!isSingleColo && coloSites.map((colo) => {
+                  const coloTotal = quote.lines.reduce((sum, line) => {
+                    const base = line.values[colo.id] || 0;
+                    if (line.item === 2 && rentalMarkupCost > 0) {
+                      const share = line.totalPrice > 0 ? base / line.totalPrice : 1 / coloSites.length;
+                      return sum + base + rentalMarkupCost * share;
+                    }
+                    if (line.item === 4 && adminPercent > 0) {
+                      return sum + base * (1 + adminPercent / 100);
+                    }
+                    return sum + base;
+                  }, 0);
+                  return (
+                    <td key={colo.id} className="px-3 py-2 text-right font-mono text-xs tabular-nums font-semibold">
+                      {formatCurrency(coloTotal)}
+                    </td>
+                  );
+                })}
+                <td className="px-3 py-2 text-right font-mono text-sm tabular-nums font-bold">
+                  {(() => {
+                    const pmLine = quote.lines.find((l) => l.item === 4);
+                    const adminValue = pmLine ? pmLine.totalPrice * (adminPercent / 100) : 0;
+                    const equipLine = quote.lines.find((l) => l.item === 3);
+                    const taxValue = equipLine ? equipLine.totalPrice * (taxPercent / 100) : 0;
+                    return formatCurrency(
+                      quote.totalCost + rentalMarkupCost + adminValue + subContractorTotal + taxValue
+                    );
+                  })()}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </TooltipProvider>
+  );
+}
