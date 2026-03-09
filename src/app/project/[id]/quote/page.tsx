@@ -409,12 +409,13 @@ export default function QuotePage() {
 
   useEffect(() => {
     const id = params.id as string;
-    const p = loadProject(id);
-    if (!p) {
-      router.push("/");
-      return;
-    }
-    setProject(migrateProject(p));
+    loadProject(id).then((p) => {
+      if (!p) {
+        router.push("/");
+        return;
+      }
+      setProject(migrateProject(p));
+    });
   }, [params.id, router]);
 
   if (!project) {

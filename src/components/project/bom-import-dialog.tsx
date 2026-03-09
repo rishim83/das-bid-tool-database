@@ -71,7 +71,7 @@ export function BomImportDialog({
 
   // Load database when dialog opens
   useEffect(() => {
-    if (open) setDb(loadDatabase());
+    if (open) loadDatabase().then(setDb);
   }, [open]);
 
   const [priceOverrides, setPriceOverrides] = useState<Record<string, number>>({});

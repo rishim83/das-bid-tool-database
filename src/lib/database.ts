@@ -1,31 +1,24 @@
 import * as XLSX from "xlsx";
 import type { DatabaseEntry, LaborCode, PartsDatabase } from "@/types";
 
-const DB_KEY = "das-bid-database";
-
-export function loadDatabase(): PartsDatabase | null {
-  if (typeof window === "undefined") return null;
-  const raw = localStorage.getItem(DB_KEY);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as PartsDatabase;
-  } catch {
-    return null;
-  }
+export async function loadDatabase(): Promise<PartsDatabase | null> {
+  const res = await fetch("/api/database");
+  if (!res.ok) return null;
+  return res.json();
 }
 
-export function saveDatabase(db: PartsDatabase): void {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(DB_KEY, JSON.stringify(db));
-  } catch {
-    throw new Error("Database is too large to store. Try reducing the number of entries.");
-  }
+export async function saveDatabase(db: PartsDatabase): Promise<void> {
+  const res = await fetch("/api/database", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(db),
+  });
+  if (!res.ok) throw new Error("Failed to save database");
 }
 
-export function clearDatabase(): void {
-  if (typeof window === "undefined") return;
-  localStorage.removeItem(DB_KEY);
+export async function clearDatabase(): Promise<void> {
+  const res = await fetch("/api/database", { method: "DELETE" });
+  if (!res.ok) throw new Error("Failed to clear database");
 }
 
 /**

@@ -1,8 +1,5 @@
 import type { Project } from "@/types";
 
-const STORAGE_KEY = "das-bid-projects";
-const TEMPLATES_KEY = "das-bid-templates";
-
 export interface ProjectTemplate {
   id: string;
   name: string;
@@ -11,73 +8,52 @@ export interface ProjectTemplate {
   project: Omit<Project, "id" | "name" | "client" | "status" | "createdAt" | "updatedAt">;
 }
 
-export function loadProjects(): Project[] {
-  if (typeof window === "undefined") return [];
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return [];
-  try {
-    return JSON.parse(raw) as Project[];
-  } catch {
-    return [];
-  }
+export async function loadProjects(): Promise<Project[]> {
+  const res = await fetch("/api/projects");
+  if (!res.ok) return [];
+  return res.json();
 }
 
-export function saveProjects(projects: Project[]): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+export async function loadProject(id: string): Promise<Project | null> {
+  const res = await fetch(`/api/projects/${id}`);
+  if (res.status === 404) return null;
+  if (!res.ok) return null;
+  return res.json();
 }
 
-export function loadProject(id: string): Project | null {
-  const projects = loadProjects();
-  return projects.find((p) => p.id === id) ?? null;
+export async function saveProject(project: Project): Promise<Project> {
+  const res = await fetch(`/api/projects/${project.id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(project),
+  });
+  if (!res.ok) throw new Error("Failed to save project");
+  return res.json();
 }
 
-export function saveProject(project: Project): void {
-  const projects = loadProjects();
-  const index = projects.findIndex((p) => p.id === project.id);
-  if (index >= 0) {
-    projects[index] = { ...project, updatedAt: new Date().toISOString() };
-  } else {
-    projects.push(project);
-  }
-  saveProjects(projects);
-}
-
-export function deleteProject(id: string): void {
-  const projects = loadProjects().filter((p) => p.id !== id);
-  saveProjects(projects);
+export async function deleteProject(id: string): Promise<void> {
+  const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Failed to delete project");
 }
 
 // ─── Templates ──────────────────────────────────────────────────
 
-export function loadTemplates(): ProjectTemplate[] {
-  if (typeof window === "undefined") return [];
-  const raw = localStorage.getItem(TEMPLATES_KEY);
-  if (!raw) return [];
-  try {
-    return JSON.parse(raw) as ProjectTemplate[];
-  } catch {
-    return [];
-  }
+export async function loadTemplates(): Promise<ProjectTemplate[]> {
+  const res = await fetch("/api/templates");
+  if (!res.ok) return [];
+  return res.json();
 }
 
-export function saveTemplates(templates: ProjectTemplate[]): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
+export async function saveTemplate(template: ProjectTemplate): Promise<void> {
+  const res = await fetch("/api/templates", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(template),
+  });
+  if (!res.ok) throw new Error("Failed to save template");
 }
 
-export function saveTemplate(template: ProjectTemplate): void {
-  const templates = loadTemplates();
-  const index = templates.findIndex((t) => t.id === template.id);
-  if (index >= 0) {
-    templates[index] = template;
-  } else {
-    templates.push(template);
-  }
-  saveTemplates(templates);
-}
-
-export function deleteTemplate(id: string): void {
-  const templates = loadTemplates().filter((t) => t.id !== id);
-  saveTemplates(templates);
+export async function deleteTemplate(id: string): Promise<void> {
+  const res = await fetch(`/api/templates/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Failed to delete template");
 }

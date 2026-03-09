@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { loadProject } from "@/lib/storage";
 import { useProject } from "@/hooks/use-project";
+import type { SaveStatus } from "@/hooks/use-project";
 import type { Project, TechnologyConfig, TechnologyType } from "@/types";
 import { DEFAULT_PROJECT_SPECIFIC_DETAILS, DEFAULT_PROJECT_EXTRAS, DEFAULT_RENTAL_EQUIPMENT, DEFAULT_INPUT_PARAMETERS, DEFAULT_INSTALL_TRAVEL } from "@/types";
 import { ParametersPanel } from "@/components/project/parameters-panel";
@@ -22,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TECHNOLOGY_LABELS, TECHNOLOGY_DOT } from "@/lib/constants";
 import { formatCurrency } from "@/lib/calculations";
-import { ArrowLeft, Check, FileDown } from "lucide-react";
+import { ArrowLeft, Check, FileDown, Loader2, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -47,9 +48,35 @@ function migrateProject(p: Project): Project {
   return { ...p, inputParameters, technologies };
 }
 
+function SaveIndicator({ status }: { status: SaveStatus }) {
+  if (status === "saving") {
+    return (
+      <div className="flex items-center gap-1 text-[11px] text-muted-foreground mr-1">
+        <Loader2 className="h-3 w-3 animate-spin" />
+        Saving…
+      </div>
+    );
+  }
+  if (status === "error") {
+    return (
+      <div className="flex items-center gap-1 text-[11px] text-destructive mr-1">
+        <AlertCircle className="h-3 w-3" />
+        Error saving
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-1 text-[11px] text-muted-foreground mr-1">
+      <Check className="h-3 w-3 text-emerald-500" />
+      Saved
+    </div>
+  );
+}
+
 function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
   const {
     project,
+    saveStatus,
     fullSchedule,
     pmTravelCalculated,
     installTravelCalc,
@@ -205,10 +232,7 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
             />
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 text-[11px] text-muted-foreground mr-1">
-              <Check className="h-3 w-3 text-emerald-500" />
-              Saved
-            </div>
+            <SaveIndicator status={saveStatus} />
             <AIEstimateDialog project={project} onApply={applyBulkUpdate} />
             <Link href={`/project/${project.id}/quote`}>
               <Button size="sm" variant="outline" className="h-7 text-xs">
@@ -336,13 +360,14 @@ export default function ProjectPage() {
 
   useEffect(() => {
     const id = params.id as string;
-    const p = loadProject(id);
-    if (!p) {
-      router.push("/");
-      return;
-    }
-    setProject(migrateProject(p));
-    setLoading(false);
+    loadProject(id).then((p) => {
+      if (!p) {
+        router.push("/");
+        return;
+      }
+      setProject(migrateProject(p));
+      setLoading(false);
+    });
   }, [params.id, router]);
 
   if (loading || !project) {

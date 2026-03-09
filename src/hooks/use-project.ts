@@ -23,14 +23,23 @@ import {
 } from "@/lib/calculations";
 import { saveProject } from "@/lib/storage";
 
+export type SaveStatus = "saved" | "saving" | "error";
+
 export function useProject(initialProject: Project) {
   const [project, setProject] = useState<Project>(initialProject);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved");
 
   // Auto-save on change (debounced)
   useEffect(() => {
-    const timer = setTimeout(() => {
-      saveProject(project);
-    }, 500);
+    setSaveStatus("saving");
+    const timer = setTimeout(async () => {
+      try {
+        await saveProject(project);
+        setSaveStatus("saved");
+      } catch {
+        setSaveStatus("error");
+      }
+    }, 1000);
     return () => clearTimeout(timer);
   }, [project]);
 
@@ -165,6 +174,7 @@ export function useProject(initialProject: Project) {
 
   return {
     project,
+    saveStatus,
     fullSchedule,
     pmTravelCalculated,
     installTravelCalc,

@@ -684,9 +684,10 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const all = loadProjects();
-    setProjects(all);
-    setLoading(false);
+    loadProjects().then((all) => {
+      setProjects(all);
+      setLoading(false);
+    });
   }, []);
 
   // Determine which project(s) to analyze

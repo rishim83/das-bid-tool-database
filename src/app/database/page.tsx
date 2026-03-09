@@ -20,7 +20,7 @@ export default function DatabasePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setDb(loadDatabase());
+    loadDatabase().then(setDb);
   }, []);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -46,15 +46,19 @@ export default function DatabasePage() {
     }
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!preview) return;
-    saveDatabase(preview);
-    setDb(preview);
-    setPreview(null);
-    setStep("idle");
-    toast.success(
-      `Database saved — ${preview.entries.length} parts, ${preview.laborCodes.length} labor codes`
-    );
+    try {
+      await saveDatabase(preview);
+      setDb(preview);
+      setPreview(null);
+      setStep("idle");
+      toast.success(
+        `Database saved — ${preview.entries.length} parts, ${preview.laborCodes.length} labor codes`
+      );
+    } catch {
+      toast.error("Failed to save database");
+    }
   };
 
   const handleDiscard = () => {
@@ -62,12 +66,16 @@ export default function DatabasePage() {
     setStep("idle");
   };
 
-  const handleClear = () => {
+  const handleClear = async () => {
     if (!confirm("Clear the parts database? This cannot be undone.")) return;
-    clearDatabase();
-    setDb(null);
-    setStep("idle");
-    toast.success("Database cleared");
+    try {
+      await clearDatabase();
+      setDb(null);
+      setStep("idle");
+      toast.success("Database cleared");
+    } catch {
+      toast.error("Failed to clear database");
+    }
   };
 
   const activeDb = preview ?? db;

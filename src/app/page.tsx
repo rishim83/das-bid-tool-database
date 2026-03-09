@@ -51,42 +51,47 @@ export default function HomePage() {
   const [templateName, setTemplateName] = useState("");
   const [templateDesc, setTemplateDesc] = useState("");
 
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    setProjects(loadProjects());
-    setTemplates(loadTemplates());
+    Promise.all([loadProjects(), loadTemplates()]).then(([projs, tmpls]) => {
+      setProjects(projs);
+      setTemplates(tmpls);
+      setLoading(false);
+    });
   }, []);
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     const project = createNewProject(newName || "New Project", newClient);
-    saveProject(project);
+    await saveProject(project);
     setDialogOpen(false);
     setNewName("");
     setNewClient("");
     router.push(`/project/${project.id}`);
   };
 
-  const handleCreateFromTemplate = (template: ProjectTemplate) => {
+  const handleCreateFromTemplate = async (template: ProjectTemplate) => {
     const project = createNewProject(newName || "New Project", newClient);
     project.inputParameters = { ...template.project.inputParameters };
     project.schedule = { ...template.project.schedule };
     project.pmTravel = { ...template.project.pmTravel };
     project.coloSites = template.project.coloSites.map((s) => ({ ...s }));
     project.technologies = JSON.parse(JSON.stringify(template.project.technologies));
-    saveProject(project);
+    await saveProject(project);
     setTemplateDialogOpen(false);
     setNewName("");
     setNewClient("");
     router.push(`/project/${project.id}`);
   };
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm("Delete this project?")) return;
-    deleteProject(id);
-    setProjects(loadProjects());
+    await deleteProject(id);
+    setProjects(await loadProjects());
   };
 
-  const handleDuplicate = (p: Project, e: React.MouseEvent) => {
+  const handleDuplicate = async (p: Project, e: React.MouseEvent) => {
     e.stopPropagation();
     const dup = createNewProject(`${p.name} (Copy)`, p.client);
     dup.inputParameters = { ...p.inputParameters };
@@ -94,8 +99,8 @@ export default function HomePage() {
     dup.pmTravel = { ...p.pmTravel };
     dup.coloSites = p.coloSites.map((s) => ({ ...s }));
     dup.technologies = JSON.parse(JSON.stringify(p.technologies));
-    saveProject(dup);
-    setProjects(loadProjects());
+    await saveProject(dup);
+    setProjects(await loadProjects());
   };
 
   const handleSaveAsTemplate = (p: Project, e: React.MouseEvent) => {
@@ -105,7 +110,7 @@ export default function HomePage() {
     setTemplateDesc("");
   };
 
-  const confirmSaveTemplate = () => {
+  const confirmSaveTemplate = async () => {
     if (!saveTemplateProject) return;
     const template: ProjectTemplate = {
       id: uuid(),
@@ -120,17 +125,17 @@ export default function HomePage() {
         technologies: JSON.parse(JSON.stringify(saveTemplateProject.technologies)),
       },
     };
-    saveTemplate(template);
-    setTemplates(loadTemplates());
+    await saveTemplate(template);
+    setTemplates(await loadTemplates());
     setSaveTemplateProject(null);
     setTemplateName("");
     setTemplateDesc("");
   };
 
-  const handleDeleteTemplate = (id: string) => {
+  const handleDeleteTemplate = async (id: string) => {
     if (!confirm("Delete this template?")) return;
-    deleteTemplate(id);
-    setTemplates(loadTemplates());
+    await deleteTemplate(id);
+    setTemplates(await loadTemplates());
   };
 
   return (
@@ -252,7 +257,11 @@ export default function HomePage() {
         </Dialog>
 
         {/* Projects */}
-        {projects.length === 0 ? (
+        {loading ? (
+          <div className="border border-border/40 rounded-lg py-12 flex items-center justify-center text-sm text-muted-foreground">
+            Loading…
+          </div>
+        ) : projects.length === 0 ? (
           <div className="border border-dashed border-border/50 rounded-lg py-16 flex flex-col items-center text-center">
             <Radio className="h-8 w-8 text-muted-foreground/20 mb-4" />
             <p className="text-sm text-muted-foreground mb-4">No projects yet</p>
