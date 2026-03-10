@@ -771,11 +771,11 @@ export function BomImportDialog({
                         </thead>
                         <tbody>
                           {analysis.matched.map((item, i) => {
-                            const needsPrice = item.unitEquipmentPrice === 0;
+                            const needsPrice = false; // $0 in database is treated as $0
                             const needsLabor = item.unitLaborHours === 0 && !item.hasLaborCode;
                             const overridePrice = priceOverrides[item.partNumber] ?? 0;
                             const overrideLabor = laborOverrides[item.partNumber];
-                            const effectivePrice = needsPrice ? overridePrice : item.unitEquipmentPrice;
+                            const effectivePrice = item.unitEquipmentPrice;
                             const effectiveLabor = needsLabor
                               ? (overrideLabor ?? 0)
                               : item.unitLaborHours;
