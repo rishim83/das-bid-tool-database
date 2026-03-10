@@ -102,6 +102,12 @@ export function analyzeBOM(
     dbMap.set(entry.partNumber.toLowerCase().trim(), entry);
   });
 
+  // Build a map of laborCode → hoursPerUnit for PJHOOK subtraction
+  const lcHoursMap = new Map<string, number>();
+  db.laborCodes.forEach((lc) => {
+    lcHoursMap.set(lc.code.toLowerCase().trim(), lc.hoursPerUnit);
+  });
+
   const matched: MatchedBOMItem[] = [];
   const unmatched: UnmatchedBOMItem[] = [];
 
@@ -111,9 +117,13 @@ export function analyzeBOM(
       let unitLaborHours = includeLiftAdder
         ? (dbEntry.liftLaborHoursPerUnit ?? dbEntry.laborHoursPerUnit)
         : dbEntry.laborHoursPerUnit;
-      // J Hooks: zero out labor for PJHOOK code when disabled
-      if (!includeJHooks && dbEntry.laborCode.toUpperCase() === "PJHOOK") {
-        unitLaborHours = 0;
+      // J Hooks: subtract PJHOOK labor contribution when disabled
+      if (!includeJHooks) {
+        const codes = dbEntry.laborCode.split(",").map((c) => c.trim().toLowerCase());
+        if (codes.includes("pjhook")) {
+          const pjhookHours = lcHoursMap.get("pjhook") ?? 0;
+          unitLaborHours = Math.max(0, unitLaborHours - pjhookHours);
+        }
       }
       matched.push({
         partNumber: item.partNumber,
