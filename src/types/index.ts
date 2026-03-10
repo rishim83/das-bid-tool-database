@@ -103,6 +103,18 @@ export interface LaborHoursBreakdown {
   liftSpotters: number;
 }
 
+// ─── BOM Report Row (stored when BOM is applied for Excel export) ───────────
+
+export interface BOMReportRow {
+  code: string;           // part number or adder label (e.g. "PCC", "BADGE")
+  manufacturer: string;
+  qty: number;
+  unitEquipPrice: number;
+  unitLaborHrs: number;
+  totalEquipPrice: number;
+  totalLaborHrs: number;
+}
+
 // ─── Technology Configuration ───────────────────────────────────
 
 export interface TechnologyConfig {
@@ -114,6 +126,7 @@ export interface TechnologyConfig {
   pmTrips: Record<string, number>;            // coloId -> trip count
   laborHoursBreakdown?: LaborHoursBreakdown;      // snapshot set when BOM is applied
   equipmentCostBreakdown?: EquipmentCostBreakdown; // snapshot set when BOM is applied
+  bomReportRows?: BOMReportRow[];                  // per-item rows stored when BOM is applied
   // Per-technology project details
   materialHandlingHours: number;
   commissioningSupport: number;

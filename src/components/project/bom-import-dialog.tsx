@@ -13,6 +13,7 @@ import type {
   ProjectSpecificDetails,
   LaborHoursBreakdown,
   EquipmentCostBreakdown,
+  BOMReportRow,
 } from "@/types";
 import { loadDatabase } from "@/lib/database";
 import { extractBOMRows, applyBOMMapping, analyzeBOM, applyDistribution } from "@/lib/bom-processor";
@@ -341,7 +342,28 @@ export function BomImportDialog({
         .map((m) => ({ name: m.name || "Additional Material", value: m.value })),
     };
 
-    onApply({ ...tech, installLaborHours, equipmentCost, laborHoursBreakdown, equipmentCostBreakdown });
+    // Build per-item BOM report rows (same data as Download Report)
+    const bomReportRows: BOMReportRow[] = [
+      ...analysis.matched.map((item) => {
+        const up = item.unitEquipmentPrice === 0 ? (priceOverrides[item.partNumber] ?? 0) : item.unitEquipmentPrice;
+        const ul = item.unitLaborHours === 0 ? (laborOverrides[item.partNumber] ?? 0) : item.unitLaborHours;
+        return { code: item.partNumber, manufacturer: item.manufacturer || "", qty: item.quantity, unitEquipPrice: up, unitLaborHrs: ul, totalEquipPrice: up * item.quantity, totalLaborHrs: ul * item.quantity };
+      }),
+      ...unmatched.map((item) => ({ code: item.partNumber, manufacturer: item.manufacturer || "", qty: item.quantity, unitEquipPrice: item.unitEquipmentPrice, unitLaborHrs: item.unitLaborHours, totalEquipPrice: item.unitEquipmentPrice * item.quantity, totalLaborHrs: item.unitLaborHours * item.quantity })),
+      ...(coresAddedHours > 0 ? [{ code: "PCC", manufacturer: "", qty: projectSpecificDetails!.cores.count, unitEquipPrice: 0, unitLaborHrs: pccHoursPerUnit, totalEquipPrice: 0, totalLaborHrs: coresAddedHours }] : []),
+      ...(badgingAddedHours > 0 ? [{ code: "BADGE", manufacturer: "", qty: numberOfGuys, unitEquipPrice: 0, unitLaborHrs: 4, totalEquipPrice: 0, totalLaborHrs: badgingAddedHours }] : []),
+      ...(materialHandlingHours > 0 ? [{ code: "MH", manufacturer: "", qty: 1, unitEquipPrice: 0, unitLaborHrs: materialHandlingHours, totalEquipPrice: 0, totalLaborHrs: materialHandlingHours }] : []),
+      ...(commissioningHours > 0 ? [{ code: "COMM", manufacturer: "", qty: 1, unitEquipPrice: 0, unitLaborHrs: commissioningHours, totalEquipPrice: 0, totalLaborHrs: commissioningHours }] : []),
+      ...additionalLaborItemsData.map((item) => ({ code: "ADDL", manufacturer: item.description || "Additional Labor", qty: 1, unitEquipPrice: 0, unitLaborHrs: item.hours, totalEquipPrice: 0, totalLaborHrs: item.hours })),
+      ...(shuttleHours > 0 ? [{ code: "SHUTTLE", manufacturer: "", qty: 1, unitEquipPrice: 0, unitLaborHrs: shuttleHours, totalEquipPrice: 0, totalLaborHrs: shuttleHours }] : []),
+      ...(stretchHours > 0 ? [{ code: "S&F", manufacturer: "", qty: 1, unitEquipPrice: 0, unitLaborHrs: stretchHours, totalEquipPrice: 0, totalLaborHrs: stretchHours }] : []),
+      ...(compositeHours > 0 ? [{ code: "CLEANUP", manufacturer: "", qty: 1, unitEquipPrice: 0, unitLaborHrs: compositeHours, totalEquipPrice: 0, totalLaborHrs: compositeHours }] : []),
+      ...(liftHours > 0 ? [{ code: "LIFT", manufacturer: "", qty: 1, unitEquipPrice: 0, unitLaborHrs: liftHours, totalEquipPrice: 0, totalLaborHrs: liftHours }] : []),
+      ...((tech.waterAndIce ?? 0) > 0 ? [{ code: "W&I", manufacturer: "Water & Ice", qty: 1, unitEquipPrice: tech.waterAndIce!, unitLaborHrs: 0, totalEquipPrice: tech.waterAndIce!, totalLaborHrs: 0 }] : []),
+      ...(tech.additionalMaterials ?? []).filter((m) => (m.value || 0) > 0).map((m) => ({ code: "ADDL-MAT", manufacturer: m.name || "Additional Material", qty: 1, unitEquipPrice: m.value, unitLaborHrs: 0, totalEquipPrice: m.value, totalLaborHrs: 0 })),
+    ];
+
+    onApply({ ...tech, installLaborHours, equipmentCost, laborHoursBreakdown, equipmentCostBreakdown, bomReportRows });
     toast.success(
       `BOM applied — ${totalHours.toFixed(1)} hrs · ${formatCurrency(totalEquipmentWithExtras)} equipment`
     );

@@ -23,7 +23,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TECHNOLOGY_LABELS, TECHNOLOGY_DOT } from "@/lib/constants";
 import { formatCurrency } from "@/lib/calculations";
-import { ArrowLeft, Check, FileDown, Loader2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Check, FileSpreadsheet, Loader2, AlertCircle } from "lucide-react";
+// ExcelJS loaded dynamically inside downloadDetailedExcel to keep bundle lean
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -207,6 +208,449 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
     ...(totalTaxValue > 0  ? [{ label: "Tax",             cost: totalTaxValue, sell: totalTaxValue }]  : []),
   ];
 
+  // ─── Export Details Excel ─────────────────────────────────────────────────
+  const downloadDetailedExcel = async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { Workbook } = (await import("exceljs")) as any;
+    const wb = new Workbook();
+    wb.creator = "DAS Bid Tool";
+    wb.created = new Date();
+
+    const p = project;
+    const ip = p.inputParameters;
+    const pmCalc = pmTravelCalculated;
+    const installConfig = p.installTravel ?? DEFAULT_INSTALL_TRAVEL;
+
+    // ── Palette ──────────────────────────────────────────────────────────────
+    const NAVY   = { argb: "FF1B3A6B" };
+    const GREEN  = { argb: "FF16A34A" };
+    const RED    = { argb: "FFDC2626" };
+    const GRAY   = { argb: "FF64748B" };
+    const WHITE  = { argb: "FFFFFFFF" };
+    const fill = (argb: string) => ({ type: "pattern", pattern: "solid", fgColor: { argb } });
+    const NAVY_FILL  = fill("FF1B3A6B");
+    const BLUE_FILL  = fill("FF2563EB");
+    const ALT_FILL   = fill("FFF0F4FF");
+    const WHITE_FILL = fill("FFFFFFFF");
+    const TOTAL_FILL = fill("FFE2E8F0");
+    const BORDER = {
+      top:    { style: "thin", color: { argb: "FFCBD5E1" } },
+      bottom: { style: "thin", color: { argb: "FFCBD5E1" } },
+      left:   { style: "thin", color: { argb: "FFCBD5E1" } },
+      right:  { style: "thin", color: { argb: "FFCBD5E1" } },
+    };
+    // Per-technology section header colors
+    const TECH_FILL: Record<string, ReturnType<typeof fill>> = {
+      DAS:           fill("FF1E3A5F"),  // deep navy-blue
+      PUBLIC_SAFETY: fill("FF7C2D12"),  // deep rust/orange-red
+      ROIP:          fill("FF14532D"),  // deep green
+    };
+    const USD     = '"$"#,##0.00';
+    const PCT_FMT = '0.0"%"';
+    const HRS_FMT = "0.00";
+
+    // ── Style helpers ────────────────────────────────────────────────────────
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const secHeader = (ws: any, title: string, cols: number, customFill?: ReturnType<typeof fill>) => {
+      const row = ws.addRow([title]);
+      ws.mergeCells(row.number, 1, row.number, cols);
+      row.getCell(1).fill = customFill ?? NAVY_FILL;
+      row.getCell(1).font = { bold: true, size: 11, color: WHITE };
+      row.getCell(1).alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+      row.height = 22;
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const colHdrs = (ws: any, headers: string[]) => {
+      const row = ws.addRow(headers);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      row.eachCell({ includeEmpty: true }, (cell: any, cn: number) => {
+        cell.fill = BLUE_FILL;
+        cell.font = { bold: true, size: 9, color: WHITE };
+        cell.alignment = { vertical: "middle", horizontal: cn === 1 ? "left" : "right" };
+        cell.border = BORDER;
+      });
+      row.height = 18;
+      return row;
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const dataRow = (ws: any, values: (string | number | null)[], isAlt: boolean, isTotal = false) => {
+      const row = ws.addRow(values);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      row.eachCell({ includeEmpty: true }, (cell: any, cn: number) => {
+        cell.fill = isTotal ? TOTAL_FILL : isAlt ? ALT_FILL : WHITE_FILL;
+        cell.font = { bold: isTotal, size: 9 };
+        cell.alignment = { vertical: "middle", horizontal: cn === 1 ? "left" : "right" };
+        cell.border = BORDER;
+      });
+      row.height = 16;
+      return row;
+    };
+
+    // Key-value pair row (label | value | label | value | —)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const kvRow = (ws: any, pairs: (string | number)[], isAlt: boolean) => {
+      const row = dataRow(ws, pairs, isAlt);
+      row.getCell(1).font = { size: 9, color: GRAY };
+      row.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
+      row.getCell(3).font = { size: 9, color: GRAY };
+      row.getCell(3).alignment = { horizontal: "left", vertical: "middle" };
+    };
+
+    // ════════════════════════════════════════════════════════════════════════
+    // SHEET 1 — Project Summary  (all data in one place)
+    // ════════════════════════════════════════════════════════════════════════
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ws: any = wb.addWorksheet("Project Summary");
+    ws.columns = [
+      { width: 32 }, { width: 16 }, { width: 32 }, { width: 16 }, { width: 4 },
+    ];
+
+    // ── Title block ────────────────────────────────────────────────────────
+    const titleRow = ws.addRow([p.name || "Project"]);
+    ws.mergeCells(titleRow.number, 1, titleRow.number, 5);
+    titleRow.getCell(1).font = { bold: true, size: 20, color: NAVY };
+    titleRow.getCell(1).alignment = { vertical: "middle" };
+    titleRow.height = 38;
+
+    const subRow = ws.addRow([
+      `${p.client || ""}   ·   ${p.status.charAt(0).toUpperCase() + p.status.slice(1)}   ·   Generated ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`,
+    ]);
+    ws.mergeCells(subRow.number, 1, subRow.number, 5);
+    subRow.getCell(1).font = { size: 9, italic: true, color: GRAY };
+    subRow.height = 15;
+
+    ws.addRow([]);
+
+    const gtRow = ws.addRow(["GRAND TOTAL", null, null, grandTotal, null]);
+    ws.mergeCells(gtRow.number, 1, gtRow.number, 3);
+    ws.mergeCells(gtRow.number, 4, gtRow.number, 5);
+    gtRow.getCell(1).font = { size: 10, color: GRAY };
+    gtRow.getCell(1).alignment = { vertical: "middle" };
+    gtRow.getCell(4).font = { bold: true, size: 22, color: NAVY };
+    gtRow.getCell(4).numFmt = USD;
+    gtRow.getCell(4).alignment = { horizontal: "right", vertical: "middle" };
+    gtRow.height = 34;
+
+    ws.addRow([]);
+
+    // ── Financial Summary ──────────────────────────────────────────────────
+    secHeader(ws, "FINANCIAL SUMMARY", 5);
+    colHdrs(ws, ["Category", "Cost ($)", "Sell ($)", "Gross Margin ($)", "GM %"]);
+    let finAlt = false;
+    const writeFin = (items: FinancialItem[], depth = 0) => {
+      items.filter((i) => i.sell > 0 || i.cost > 0).forEach((item) => {
+        const margin = item.sell - item.cost;
+        const mPct   = item.sell > 0 ? (margin / item.sell) * 100 : 0;
+        const pass   = Math.abs(margin) < 0.01;
+        const label  = depth > 0 ? `    ${item.label}` : item.label;
+        const row = dataRow(ws, [label, item.cost, item.sell, pass ? null : margin, pass ? null : mPct], finAlt);
+        finAlt = !finAlt;
+        row.getCell(1).font = { bold: depth === 0 && (item.children?.length ?? 0) > 0, size: 9 };
+        row.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
+        row.getCell(2).numFmt = USD;
+        row.getCell(3).numFmt = USD;
+        if (!pass) {
+          row.getCell(4).numFmt = USD;
+          row.getCell(4).font = { size: 9, color: margin >= 0 ? GREEN : RED };
+          row.getCell(5).numFmt = PCT_FMT;
+          row.getCell(5).font = { size: 9, color: mPct >= 0 ? GREEN : RED };
+        }
+        if (item.children) writeFin(item.children, depth + 1);
+      });
+    };
+    writeFin(financialItems);
+
+    const fVis = financialItems.filter((i) => i.sell > 0 || i.cost > 0);
+    const fTC  = fVis.reduce((s, i) => s + i.cost, 0);
+    const fTS  = fVis.reduce((s, i) => s + i.sell, 0);
+    const fTM  = fTS - fTC;
+    const fTP  = fTS > 0 ? (fTM / fTS) * 100 : 0;
+    const fTotRow = dataRow(ws, ["Total", fTC, fTS, fTM, fTP], false, true);
+    fTotRow.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
+    fTotRow.getCell(2).numFmt = USD;
+    fTotRow.getCell(3).numFmt = USD;
+    fTotRow.getCell(4).numFmt = USD;
+    fTotRow.getCell(4).font = { bold: true, size: 9, color: fTM >= 0 ? GREEN : RED };
+    fTotRow.getCell(5).numFmt = PCT_FMT;
+    fTotRow.getCell(5).font = { bold: true, size: 9, color: fTP >= 0 ? GREEN : RED };
+
+    ws.addRow([]);
+
+    // ── Pricing Parameters ─────────────────────────────────────────────────
+    secHeader(ws, "PRICING PARAMETERS", 5);
+    const paramPairs: (string | number)[][] = [
+      ["Sell Hourly Rate ($)",          ip.hourlyRate,                        "Buy Hourly Rate ($)",          ip.buyHourlyRate],
+      ["PM Sell Rate ($/hr)",           ip.pmHourlyRate,                      "PM Buy Rate ($/hr)",           ip.buyPMHourlyRate],
+      ["Non-Union Rate ($/hr)",         ip.nonUnionRate,                      "Mark Up (×)",                  ip.markUp],
+      ["Sub Mark Up (×)",               ip.subMarkUp,                         "Tax (%)",                      ip.taxPercent],
+      ["Material Safety Factor",        ip.materialSafety,                    "Labor Safety Factor",          ip.laborSafety],
+      ["PM on Job (%)",                 Number((ip.pmOnJob * 100).toFixed(0)), "Travel Indirect Markup (×)",  ip.travelIndirectMarkup],
+      ["Travel per Day ($)",            ip.travelPerDay,                      "",                             ""],
+    ];
+    paramPairs.forEach((pair, i) => kvRow(ws, pair, i % 2 === 1));
+
+    ws.addRow([]);
+
+    // ── Schedule ───────────────────────────────────────────────────────────
+    secHeader(ws, "SCHEDULE", 5);
+    [
+      ["Hours per Day", ip.hoursPerDay, "Days per Week", ip.daysPerWeek],
+      ["Number of Techs", p.schedule.numberOfGuys, "", ""],
+    ].forEach((pair, i) => kvRow(ws, pair, i % 2 === 1));
+
+    ws.addRow([]);
+
+    // ── Install Travel (always shown, separate from PM Travel) ──────────────
+    secHeader(ws, "INSTALL TRAVEL", 5);
+    [
+      ["Travel (%)",             installConfig.travelPercent,         "Per Diem Rate ($/day)",    installConfig.perDiemRate],
+      ["Airfare per Trip ($)",   installConfig.airfarePricePerTrip,   "Lodging per Night ($)",    installConfig.lodgingRatePerNight],
+      ["Fuel - flat ($)",        installConfig.fuel,                  "",                          ""],
+      ...(installTravelCalc ? [
+        ["Travel Hours",           Number(installTravelCalc.travelHours.toFixed(1)),      "Project Days",       Number(installTravelCalc.projectDays.toFixed(1))],
+        ["Round Trips",            installTravelCalc.roundTrips,                           "Per Diem Total ($)", Number(installTravelCalc.perDiemTotal.toFixed(2))],
+        ["Travel Labor Total ($)", Number(installTravelCalc.travelLaborTotal.toFixed(2)), "Airfare Total ($)",  Number(installTravelCalc.airfareTotal.toFixed(2))],
+        ["Lodging Total ($)",      Number(installTravelCalc.lodgingTotal.toFixed(2)),     "Raw Total ($)",      Number(installTravelCalc.rawTotal.toFixed(2))],
+        ["Marked Up Total ($)",    Number(installTravelCalc.markedUpTotal.toFixed(2)),    "",                   ""],
+      ] : []),
+    ].forEach((pair, i) => kvRow(ws, pair, i % 2 === 1));
+
+    ws.addRow([]);
+
+    // ── PM Travel ──────────────────────────────────────────────────────────
+    secHeader(ws, "PM TRAVEL (per trip)", 5);
+    [
+      ["Days per Trip",           p.pmTravel.daysPerTrip,    "Flight ($)",           p.pmTravel.flight],
+      ["Hotel per Day ($)",       p.pmTravel.hotelPerDay,    "Total Hotel ($)",       pmCalc.hotel],
+      ["Car Rental per Day ($)",  p.pmTravel.carRentalPerDay,"Total Car Rental ($)",  pmCalc.carRental],
+      ["Per Diem per Day ($)",    p.pmTravel.perDiemPerDay,  "Total Per Diem ($)",    pmCalc.perDiem],
+      ["Total per Trip ($)",      pmCalc.totalPerTrip,       "",                      ""],
+    ].forEach((pair, i) => kvRow(ws, pair, i % 2 === 1));
+
+    ws.addRow([]);
+
+    // ── Per-tech sections ──────────────────────────────────────────────────
+    enabledTechs.forEach((tech) => {
+      const quote = quotes.find((q) => q.type === tech.type);
+      if (!quote) return;
+
+      const techRentalMarkup  = getTechRentalMarkup(tech);
+      const techSubMarkup     = getTechSubMarkup(tech);
+      const installTravelLine = quote.lines.find((l) => l.item === 6);
+      const pmTravelLine      = quote.lines.find((l) => l.item === 5);
+      const pmLine            = quote.lines.find((l) => l.item === 4);
+      const equipLine         = quote.lines.find((l) => l.item === 3);
+      const adminVal          = pmLine   ? pmLine.totalPrice   * (adminPercent / 100) : 0;
+      const taxVal            = equipLine ? equipLine.totalPrice * (taxPercent  / 100) : 0;
+      const techTotal         = quote.totalCost + techRentalMarkup + adminVal + techSubMarkup + taxVal;
+
+      // Quote table
+      const tFill = TECH_FILL[tech.type] ?? NAVY_FILL;
+      secHeader(ws, `${TECHNOLOGY_LABELS[tech.type]}`, 5, tFill);
+      colHdrs(ws, ["#", "Line Item", "", "Total ($)", ""]);
+      let qAlt = false;
+      quote.lines.forEach((line) => {
+        if (line.item === 5 || line.item === 6) return;
+        const isInstall = line.item === 2;
+        const isPM      = line.item === 4;
+        const isEquip   = line.item === 3;
+        const displayTotal = isInstall
+          ? line.totalPrice + (installTravelLine?.totalPrice || 0) + techRentalMarkup + techSubMarkup
+          : isEquip ? line.totalPrice + line.totalPrice * (taxPercent / 100)
+          : isPM    ? line.totalPrice + (pmTravelLine?.totalPrice || 0) + line.totalPrice * (adminPercent / 100)
+          : line.totalPrice;
+        const row = dataRow(ws, [line.item, line.description, null, displayTotal, null], qAlt);
+        qAlt = !qAlt;
+        row.getCell(1).alignment = { horizontal: "center", vertical: "middle" };
+        row.getCell(2).alignment = { horizontal: "left",   vertical: "middle" };
+        row.getCell(4).numFmt = USD;
+      });
+      const qTotRow = dataRow(ws, ["", "Total", null, techTotal, null], false, true);
+      qTotRow.getCell(2).alignment = { horizontal: "left", vertical: "middle" };
+      qTotRow.getCell(4).numFmt = USD;
+
+      ws.addRow([]);
+
+      // Labor hours
+      secHeader(ws, `${TECHNOLOGY_LABELS[tech.type]} — Labor Hours`, 5, tFill);
+      colHdrs(ws, ["Item", "Hours", "", "", ""]);
+      const bd = tech.laborHoursBreakdown;
+      const laborItems: [string, number][] = [];
+      if (bd) {
+        laborItems.push(["BOM Labor Hours (from database)", bd.bom]);
+        if (bd.cores > 0)                laborItems.push(["Cores", bd.cores]);
+        if (bd.badging > 0)              laborItems.push(["Badging / Safety", bd.badging]);
+        if (bd.materialHandling > 0)     laborItems.push(["Material Handling", bd.materialHandling]);
+        if (bd.commissioningSupport > 0) laborItems.push(["Commissioning Support", bd.commissioningSupport]);
+        (bd.additionalLaborItems ?? []).forEach((it) => { if (it.hours > 0) laborItems.push([it.description || "Additional Labor", it.hours]); });
+        if (bd.shuttleServices > 0)  laborItems.push(["Shuttle Services", bd.shuttleServices]);
+        if (bd.stretchAndFlex > 0)   laborItems.push(["Stretch & Flex", bd.stretchAndFlex]);
+        if (bd.compositeCleanup > 0) laborItems.push(["Composite Cleanup", bd.compositeCleanup]);
+        if (bd.liftSpotters > 0)     laborItems.push(["Lift Spotters", bd.liftSpotters]);
+      } else {
+        const bomTot = Object.values(tech.installLaborHours).reduce((s, h) => s + (h || 0), 0);
+        laborItems.push(["BOM Labor Hours", bomTot]);
+        if ((tech.materialHandlingHours ?? 0) > 0) laborItems.push(["Material Handling", tech.materialHandlingHours ?? 0]);
+        if ((tech.commissioningSupport  ?? 0) > 0) laborItems.push(["Commissioning Support", tech.commissioningSupport ?? 0]);
+        (tech.additionalLaborItems ?? []).forEach((it) => { if (it.hours > 0) laborItems.push([it.description || "Additional Labor", it.hours]); });
+      }
+      const totalLaborHrs = laborItems.reduce((s, [, h]) => s + h, 0);
+      laborItems.forEach(([label, hrs], i) => {
+        const r = dataRow(ws, [label, hrs, null, null, null], i % 2 === 1);
+        r.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
+        r.getCell(2).numFmt = "0.0";
+      });
+      const labTotRow = dataRow(ws, ["Total Hours", totalLaborHrs, null, null, null], false, true);
+      labTotRow.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
+      labTotRow.getCell(2).numFmt = "0.0";
+
+      ws.addRow([]);
+
+      // Materials
+      secHeader(ws, `${TECHNOLOGY_LABELS[tech.type]} — Materials & Equipment`, 5, tFill);
+      colHdrs(ws, ["Item", "Raw ($)", "Sell ($)", "", ""]);
+      const ebd    = tech.equipmentCostBreakdown;
+      const rawBOM = Object.values(tech.equipmentCost).reduce((s, c) => s + (c || 0), 0);
+      const matItems: [string, number, number | null][] = [
+        ["BOM Equipment (from database)", rawBOM, rawBOM * ip.materialSafety * ip.markUp],
+      ];
+      if (ebd) {
+        if (ebd.waterAndIce > 0) matItems.push(["Water & Ice", ebd.waterAndIce, ebd.waterAndIce * ip.materialSafety * ip.markUp]);
+        (ebd.additionalMaterials ?? []).forEach((m) => { if (m.value > 0) matItems.push([m.name || "Additional Material", m.value, m.value * ip.materialSafety * ip.markUp]); });
+      } else {
+        if ((tech.waterAndIce ?? 0) > 0) matItems.push(["Water & Ice", tech.waterAndIce ?? 0, (tech.waterAndIce ?? 0) * ip.materialSafety * ip.markUp]);
+        (tech.additionalMaterials ?? []).forEach((m) => { if (m.value > 0) matItems.push([m.name || "Additional Material", m.value, m.value * ip.materialSafety * ip.markUp]); });
+      }
+      const rental  = tech.rentalEquipment ?? DEFAULT_RENTAL_EQUIPMENT;
+      const liftRaw = rental.lift.months * rental.lift.costPerMonth;
+      if (liftRaw > 0) matItems.push(["Lift Rental", liftRaw, null]);
+      (rental.additionalItems ?? []).forEach((item) => {
+        const val = item.months * item.costPerMonth;
+        if (val > 0) matItems.push([`Rental: ${item.name}`, val, null]);
+      });
+      matItems.forEach(([label, raw, sell], i) => {
+        const r = dataRow(ws, [label, raw, sell ?? null, null, null], i % 2 === 1);
+        r.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
+        r.getCell(2).numFmt = USD;
+        if (sell !== null) r.getCell(3).numFmt = USD;
+      });
+      const subs = (tech.subContractors ?? []).filter((s) => s.value > 0);
+      if (subs.length > 0) {
+        colHdrs(ws, ["Subcontractor", "Raw ($)", "Sell ($)", "", ""]);
+        subs.forEach((sub, i) => {
+          const r = dataRow(ws, [sub.task, sub.value, sub.value * ip.subMarkUp, null, null], i % 2 === 1);
+          r.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
+          r.getCell(2).numFmt = USD;
+          r.getCell(3).numFmt = USD;
+        });
+      }
+
+      ws.addRow([]);
+    });
+
+    // ════════════════════════════════════════════════════════════════════════
+    // SHEET 2 — BOM Report  (matches the in-app "Download Report" button)
+    // ════════════════════════════════════════════════════════════════════════
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ws2: any = wb.addWorksheet("BOM Report");
+    ws2.columns = [
+      { width: 14 }, { width: 36 }, { width: 7 },
+      { width: 18 }, { width: 16 }, { width: 18 }, { width: 18 },
+    ];
+
+    let hasBOM = false;
+    enabledTechs.forEach((tech, tIdx) => {
+      const rows = tech.bomReportRows;
+      if (!rows || rows.length === 0) return;
+      hasBOM = true;
+
+      if (tIdx > 0) { ws2.addRow([]); ws2.addRow([]); }
+
+      // Tech section header (tech colour)
+      const t2Fill = TECH_FILL[tech.type] ?? NAVY_FILL;
+      const thRow = ws2.addRow([TECHNOLOGY_LABELS[tech.type]]);
+      ws2.mergeCells(thRow.number, 1, thRow.number, 7);
+      thRow.getCell(1).fill = t2Fill;
+      thRow.getCell(1).font = { bold: true, size: 13, color: WHITE };
+      thRow.getCell(1).alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+      thRow.height = 26;
+
+      // Column headers
+      const hRow = ws2.addRow(["Part #", "Description / Manufacturer", "QTY", "Equip Unit ($)", "Equip Total ($)", "Labor Hrs/Unit", "Total Labor Hrs"]);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      hRow.eachCell({ includeEmpty: true }, (cell: any, cn: number) => {
+        cell.fill = BLUE_FILL;
+        cell.font = { bold: true, size: 9, color: WHITE };
+        cell.alignment = { vertical: "middle", horizontal: cn <= 2 ? "left" : "right" };
+        cell.border = BORDER;
+      });
+      hRow.height = 18;
+
+      let bAlt = false;
+      rows.forEach((row) => {
+        const desc = row.manufacturer || row.code;
+        const r = ws2.addRow([
+          row.code,
+          desc,
+          row.qty,
+          row.unitEquipPrice || null,
+          row.totalEquipPrice || null,
+          row.unitLaborHrs || null,
+          row.totalLaborHrs || null,
+        ]);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        r.eachCell({ includeEmpty: true }, (cell: any, cn: number) => {
+          cell.fill = bAlt ? ALT_FILL : WHITE_FILL;
+          cell.font = { size: 9 };
+          cell.alignment = { vertical: "middle", horizontal: cn <= 2 ? "left" : "right" };
+          cell.border = BORDER;
+        });
+        if (row.unitEquipPrice)  r.getCell(4).numFmt = USD;
+        if (row.totalEquipPrice) r.getCell(5).numFmt = USD;
+        if (row.unitLaborHrs)    r.getCell(6).numFmt = HRS_FMT;
+        if (row.totalLaborHrs)   r.getCell(7).numFmt = HRS_FMT;
+        r.height = 16;
+        bAlt = !bAlt;
+      });
+
+      // Totals row
+      const totEquip = rows.reduce((s, r) => s + (r.totalEquipPrice || 0), 0);
+      const totLabor = rows.reduce((s, r) => s + (r.totalLaborHrs  || 0), 0);
+      const tRow = ws2.addRow(["", "TOTAL", null, null, totEquip, null, totLabor]);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      tRow.eachCell({ includeEmpty: true }, (cell: any, cn: number) => {
+        cell.fill = TOTAL_FILL;
+        cell.font = { bold: true, size: 9 };
+        cell.alignment = { vertical: "middle", horizontal: cn <= 2 ? "left" : "right" };
+        cell.border = BORDER;
+      });
+      tRow.getCell(5).numFmt = USD;
+      tRow.getCell(7).numFmt = HRS_FMT;
+      tRow.height = 18;
+    });
+
+    if (!hasBOM) {
+      const nRow = ws2.addRow(["No BOM data available. Import and apply a BOM on the project page first, then re-export."]);
+      ws2.mergeCells(nRow.number, 1, nRow.number, 7);
+      nRow.getCell(1).font = { italic: true, color: GRAY, size: 10 };
+      nRow.height = 20;
+    }
+
+    // ── Download ────────────────────────────────────────────────────────────
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer as ArrayBuffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${p.name || "Project"} - Details.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -234,11 +678,9 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
           <div className="flex items-center gap-2">
             <SaveIndicator status={saveStatus} />
             <AIEstimateDialog project={project} onApply={applyBulkUpdate} />
-            <Link href={`/project/${project.id}/quote`}>
-              <Button size="sm" variant="outline" className="h-7 text-xs">
-                <FileDown className="h-3 w-3 mr-1" /> Export
-              </Button>
-            </Link>
+            <Button onClick={() => { downloadDetailedExcel().catch(console.error); }} size="sm" variant="outline" className="h-7 text-xs">
+              <FileSpreadsheet className="h-3 w-3 mr-1" /> Export Details
+            </Button>
             <ThemeToggle />
           </div>
         </div>
