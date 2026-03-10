@@ -125,10 +125,6 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
   const rentalMarkupTotal = enabledTechs.reduce((s, t) => s + getTechRentalMarkup(t), 0);
   const subRawTotal = enabledTechs.reduce((s, t) => s + getTechSubRaw(t), 0);
   const subMarkupTotal = enabledTechs.reduce((s, t) => s + getTechSubMarkup(t), 0);
-  const techSubMarkups: Record<string, number> = Object.fromEntries(
-    enabledTechs.map((t) => [t.type, getTechSubMarkup(t)])
-  );
-
   const adminPercent = psd.extras?.adminHours ?? 15;
   const totalAdminValue = quotes.reduce((sum, q) => {
     const pmLine = q.lines.find((l) => l.item === 4);
@@ -143,6 +139,20 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
   }, 0);
 
   const grandTotal = quotes.reduce((sum, q) => sum + q.totalCost, 0) + totalAdminValue + rentalMarkupTotal + subMarkupTotal + totalTaxValue;
+
+  // Per-tech totals matching quote page formula (used by ProjectSummary per-row display)
+  const techTotals: Record<string, number> = Object.fromEntries(
+    quotes.map((q) => {
+      const tech = enabledTechs.find((t) => t.type === q.type)!;
+      const techRentalMarkup = getTechRentalMarkup(tech);
+      const techSubMarkup = getTechSubMarkup(tech);
+      const pmLine = q.lines.find((l) => l.item === 4);
+      const equipLine = q.lines.find((l) => l.item === 3);
+      const adminVal = pmLine ? pmLine.totalPrice * (adminPercent / 100) : 0;
+      const taxVal = equipLine ? equipLine.totalPrice * (taxPercent / 100) : 0;
+      return [q.type, q.totalCost + techRentalMarkup + adminVal + techSubMarkup + taxVal];
+    })
+  );
 
   // ── Financial review ──────────────────────────────────────────────
   const finP = project.inputParameters;
@@ -763,7 +773,7 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
           })}
         </Tabs>
 
-        {quotes.length > 0 && <ProjectSummary quotes={quotes} projectSpecificDetails={psd} rentalMarkupTotal={rentalMarkupTotal} totalAdminValue={totalAdminValue} subMarkupTotal={subMarkupTotal} techSubMarkups={techSubMarkups} totalTaxValue={totalTaxValue} />}
+        {quotes.length > 0 && <ProjectSummary quotes={quotes} projectSpecificDetails={psd} rentalMarkupTotal={rentalMarkupTotal} totalAdminValue={totalAdminValue} subMarkupTotal={subMarkupTotal} techTotals={techTotals} totalTaxValue={totalTaxValue} />}
         {quotes.length > 0 && <FinancialReview items={financialItems} />}
         <div className="h-14" />
       </div>

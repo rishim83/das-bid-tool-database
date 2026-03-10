@@ -10,11 +10,11 @@ interface Props {
   rentalMarkupTotal?: number;
   totalAdminValue?: number;
   subMarkupTotal?: number;
-  techSubMarkups?: Record<string, number>;
+  techTotals?: Record<string, number>;
   totalTaxValue?: number;
 }
 
-export function ProjectSummary({ quotes, projectSpecificDetails: _psd, rentalMarkupTotal = 0, totalAdminValue = 0, subMarkupTotal = 0, techSubMarkups = {}, totalTaxValue = 0 }: Props) {
+export function ProjectSummary({ quotes, projectSpecificDetails: _psd, rentalMarkupTotal = 0, totalAdminValue = 0, subMarkupTotal = 0, techTotals, totalTaxValue = 0 }: Props) {
   const techTotal = quotes.reduce((sum, q) => sum + q.totalCost, 0);
 
   const grandTotal = techTotal + totalAdminValue + rentalMarkupTotal + subMarkupTotal + totalTaxValue;
@@ -31,7 +31,7 @@ export function ProjectSummary({ quotes, projectSpecificDetails: _psd, rentalMar
               <div className={`h-2 w-2 rounded-full ${TECHNOLOGY_DOT[q.type]}`} />
               <span className="text-sm">{TECHNOLOGY_LABELS[q.type]}</span>
             </div>
-            <span className="font-mono text-sm tabular-nums">{formatCurrency(q.totalCost + (techSubMarkups[q.type] ?? 0))}</span>
+            <span className="font-mono text-sm tabular-nums">{formatCurrency(techTotals ? (techTotals[q.type] ?? q.totalCost) : q.totalCost)}</span>
           </div>
         ))}
         {totalTaxValue > 0 && (
