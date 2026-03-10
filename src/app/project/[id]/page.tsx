@@ -787,7 +787,7 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
                 <div key={q.type} className="flex items-center gap-2 text-sm">
                   <div className={`h-2 w-2 rounded-full ${TECHNOLOGY_DOT[q.type]}`} />
                   <span className="text-muted-foreground text-xs">{TECHNOLOGY_LABELS[q.type]}</span>
-                  <span className="font-mono tabular-nums text-xs">{formatCurrency(q.totalCost)}</span>
+                  <span className="font-mono tabular-nums text-xs">{formatCurrency(techTotals[q.type] ?? q.totalCost)}</span>
                 </div>
               ))}
             </div>

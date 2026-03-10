@@ -34,12 +34,7 @@ export function ProjectSummary({ quotes, projectSpecificDetails: _psd, rentalMar
             <span className="font-mono text-sm tabular-nums">{formatCurrency(techTotals ? (techTotals[q.type] ?? q.totalCost) : q.totalCost)}</span>
           </div>
         ))}
-        {totalTaxValue > 0 && (
-          <div className="flex items-center justify-between py-2.5 px-4">
-            <span className="text-sm text-muted-foreground">Tax</span>
-            <span className="font-mono text-sm tabular-nums">{formatCurrency(totalTaxValue)}</span>
-          </div>
-        )}
+
         <div className="flex items-center justify-between py-3 px-4 total-row-gradient border-t border-primary/10">
           <span className="font-bold text-foreground">Grand Total</span>
           <span className="font-mono text-lg tabular-nums font-bold text-foreground">
