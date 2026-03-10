@@ -232,11 +232,9 @@ export function BomImportDialog({
   const distSum = distribution.reduce((s, d) => s + (d.percentage || 0), 0);
   const distValid = Math.abs(distSum - 100) < 0.01;
 
-  // Matched items missing a price in the database
-  const needsPriceItems = (analysis?.matched ?? []).filter((m) => m.unitEquipmentPrice === 0);
-  const unresolvedPriceCount = needsPriceItems.filter(
-    (m) => !priceOverrides[m.partNumber] || priceOverrides[m.partNumber] === 0
-  ).length;
+  // Price of $0 in the database is treated as $0 — never prompt for a price override.
+  const needsPriceItems = (analysis?.matched ?? []).filter((_m) => false as boolean);
+  const unresolvedPriceCount = 0;
 
   // Only ask for labor hours if there is NO install code at all in the database.
   // If a code exists but resolves to 0 hours, that is correct — don't prompt.
@@ -298,7 +296,7 @@ export function BomImportDialog({
 
   const shuttleHours = !!(projectSpecificDetails?.extras?.shuttleServices) && baseHours > 0 ? baseDays : 0;
   const stretchHours = !!(projectSpecificDetails?.extras?.stretchAndFlex) && baseHours > 0 ? baseDays * 0.5 : 0;
-  const compositeHours = !!(projectSpecificDetails?.extras?.compositeCleanup) && baseHours > 0 ? baseWeeks * 8 : 0;
+  const compositeHours = Number(projectSpecificDetails?.extras?.compositeCleanup ?? 0);
   const liftHours = !!(projectSpecificDetails?.extras?.liftSpotters) && baseHours > 0 ? (0.65 * baseHours) / guys : 0;
 
   // Final total (baked into installLaborHours on Apply)

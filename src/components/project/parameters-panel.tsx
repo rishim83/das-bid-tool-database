@@ -587,25 +587,27 @@ export function ParametersPanel({
             </Tooltip>
           </div>
 
-          {/* Composite Cleanup — checkbox */}
+          {/* Composite Cleanup — hours input */}
           <div className="flex items-center gap-2.5 px-3 py-2 border-t border-border/20">
-            <input
-              id="composite-cb"
-              type="checkbox"
-              checked={!!psd.extras.compositeCleanup}
-              onChange={(e) => updatePSD({ extras: { ...psd.extras, compositeCleanup: e.target.checked } })}
-              className="h-3.5 w-3.5 rounded border-border/50 accent-primary cursor-pointer shrink-0"
-            />
             <Tooltip>
               <TooltipTrigger asChild>
-                <label htmlFor="composite-cb" className="text-sm text-muted-foreground cursor-pointer select-none">
+                <label className="text-sm text-muted-foreground select-none cursor-default">
                   Composite Cleanup
                 </label>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
-                <span className="font-mono text-[11px]">Total Weeks × 8 hrs × Hourly Rate → added to Install</span>
+                <span className="font-mono text-[11px]">NTI value is # of weeks on the job × 8 hours a day</span>
               </TooltipContent>
             </Tooltip>
+            <Input
+              type="number"
+              min={0}
+              step={1}
+              placeholder="hrs"
+              value={psd.extras.compositeCleanup || ""}
+              onChange={(e) => updatePSD({ extras: { ...psd.extras, compositeCleanup: parseFloat(e.target.value) || 0 } })}
+              className="h-6 w-20 text-xs text-right ml-auto"
+            />
           </div>
 
           {/* Lift Spotters — checkbox */}

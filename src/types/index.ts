@@ -193,7 +193,7 @@ export interface ProjectExtras {
   adminHours: number;        // percentage, e.g. 15 = 15%
   shuttleServices: boolean;  // enabled = include in cost
   stretchAndFlex: boolean;
-  compositeCleanup: boolean;
+  compositeCleanup: number;  // direct hours input
   liftSpotters: boolean;
   miscMaterials: number;
   miscLabor: number;
@@ -223,7 +223,7 @@ export const DEFAULT_PROJECT_EXTRAS: ProjectExtras = {
   adminHours: 15,
   shuttleServices: false,
   stretchAndFlex: false,
-  compositeCleanup: false,
+  compositeCleanup: 0,
   liftSpotters: false,
   miscMaterials: 0,
   miscLabor: 0,
