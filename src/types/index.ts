@@ -198,6 +198,7 @@ export interface ProjectExtras {
   miscMaterials: number;
   miscLabor: number;
   projectContingency: number;
+  excludeMaterials: boolean; // force BOM equipment costs to $0
 }
 
 export interface AdditionalLaborItem {
@@ -228,6 +229,7 @@ export const DEFAULT_PROJECT_EXTRAS: ProjectExtras = {
   miscMaterials: 0,
   miscLabor: 0,
   projectContingency: 0,
+  excludeMaterials: false,
 };
 
 export const DEFAULT_PROJECT_SPECIFIC_DETAILS: ProjectSpecificDetails = {

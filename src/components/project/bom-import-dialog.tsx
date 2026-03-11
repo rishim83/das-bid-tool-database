@@ -271,7 +271,8 @@ export function BomImportDialog({
     (s, m) => s + (laborOverrides[m.partNumber] ?? 0) * m.quantity,
     0
   );
-  const totalEquipment = (analysis?.totalEquipmentCost ?? 0) + extraEquip + overrideEquipTotal;
+  const excludeMaterials = !!(projectSpecificDetails?.extras?.excludeMaterials);
+  const totalEquipment = excludeMaterials ? 0 : (analysis?.totalEquipmentCost ?? 0) + extraEquip + overrideEquipTotal;
 
   // ── Labor hour breakdown ──────────────────────────────────────
   // BOM hours = matched + overrides + resolved unmatched
@@ -343,11 +344,11 @@ export function BomImportDialog({
     // Build per-item BOM report rows (same data as Download Report)
     const bomReportRows: BOMReportRow[] = [
       ...analysis.matched.map((item) => {
-        const up = item.unitEquipmentPrice === 0 ? (priceOverrides[item.partNumber] ?? 0) : item.unitEquipmentPrice;
+        const up = excludeMaterials ? 0 : (item.unitEquipmentPrice === 0 ? (priceOverrides[item.partNumber] ?? 0) : item.unitEquipmentPrice);
         const ul = item.unitLaborHours === 0 ? (laborOverrides[item.partNumber] ?? 0) : item.unitLaborHours;
         return { code: item.partNumber, manufacturer: item.manufacturer || "", qty: item.quantity, unitEquipPrice: up, unitLaborHrs: ul, totalEquipPrice: up * item.quantity, totalLaborHrs: ul * item.quantity };
       }),
-      ...unmatched.map((item) => ({ code: item.partNumber, manufacturer: item.manufacturer || "", qty: item.quantity, unitEquipPrice: item.unitEquipmentPrice, unitLaborHrs: item.unitLaborHours, totalEquipPrice: item.unitEquipmentPrice * item.quantity, totalLaborHrs: item.unitLaborHours * item.quantity })),
+      ...unmatched.map((item) => ({ code: item.partNumber, manufacturer: item.manufacturer || "", qty: item.quantity, unitEquipPrice: excludeMaterials ? 0 : item.unitEquipmentPrice, unitLaborHrs: item.unitLaborHours, totalEquipPrice: excludeMaterials ? 0 : item.unitEquipmentPrice * item.quantity, totalLaborHrs: item.unitLaborHours * item.quantity })),
       ...(coresAddedHours > 0 ? [{ code: "PCC", manufacturer: "", qty: projectSpecificDetails!.cores.count, unitEquipPrice: 0, unitLaborHrs: pccHoursPerUnit, totalEquipPrice: 0, totalLaborHrs: coresAddedHours }] : []),
       ...(badgingAddedHours > 0 ? [{ code: "BADGE", manufacturer: "", qty: numberOfGuys, unitEquipPrice: 0, unitLaborHrs: 4, totalEquipPrice: 0, totalLaborHrs: badgingAddedHours }] : []),
       ...(materialHandlingHours > 0 ? [{ code: "MH", manufacturer: "", qty: 1, unitEquipPrice: 0, unitLaborHrs: materialHandlingHours, totalEquipPrice: 0, totalLaborHrs: materialHandlingHours }] : []),
@@ -386,10 +387,10 @@ export function BomImportDialog({
     const dataRows = [
       // Matched items
       ...analysis.matched.map((item) => {
-        const unitPrice =
-          item.unitEquipmentPrice === 0
+        const unitPrice = excludeMaterials ? 0 :
+          (item.unitEquipmentPrice === 0
             ? (priceOverrides[item.partNumber] ?? 0)
-            : item.unitEquipmentPrice;
+            : item.unitEquipmentPrice);
         const unitLabor =
           item.unitLaborHours === 0
             ? (laborOverrides[item.partNumber] ?? 0)
@@ -411,9 +412,9 @@ export function BomImportDialog({
         item.manufacturer || "",
         "",
         item.quantity,
-        item.unitEquipmentPrice,
+        excludeMaterials ? 0 : item.unitEquipmentPrice,
         item.unitLaborHours,
-        item.unitEquipmentPrice * item.quantity,
+        excludeMaterials ? 0 : item.unitEquipmentPrice * item.quantity,
         item.unitLaborHours * item.quantity,
       ]),
       // Cores addition

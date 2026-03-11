@@ -540,6 +540,20 @@ export function ParametersPanel({
           </label>
         </div>
 
+        {/* Exclude Materials */}
+        <div className="flex items-center gap-2.5 px-3 py-2 border-t border-border/20">
+          <input
+            id="exclude-materials-cb"
+            type="checkbox"
+            checked={!!psd.extras?.excludeMaterials}
+            onChange={(e) => updatePSD({ extras: { ...psd.extras, excludeMaterials: e.target.checked } })}
+            className="h-3.5 w-3.5 rounded border-border/50 accent-primary cursor-pointer"
+          />
+          <label htmlFor="exclude-materials-cb" className="text-sm text-muted-foreground cursor-pointer select-none">
+            Exclude Materials?
+          </label>
+        </div>
+
       </CategoryCard>
 
       {/* ── Extras ───────────────────────────────────────────── */}
