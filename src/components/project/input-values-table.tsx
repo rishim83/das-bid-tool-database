@@ -19,6 +19,7 @@ import {
 import { Plus, Trash2, CopyCheck, ChevronDown } from "lucide-react";
 import { v4 as uuid } from "uuid";
 import { TECHNOLOGY_LABELS, TECHNOLOGY_DOT } from "@/lib/constants";
+import { formatCurrency } from "@/lib/calculations";
 
 interface Props {
   tech: TechnologyConfig;
@@ -217,6 +218,18 @@ export function InputValuesTable({ tech, coloSites, onChange }: Props) {
                 </td>
               </tr>
             ))}
+            {tech.rfLineItems.length > 0 && (
+              <tr className="border-t border-border/40 bg-secondary/20">
+                <td className="px-3 py-1.5"></td>
+                <td className="px-3 py-1.5 text-xs font-medium text-muted-foreground text-right pr-4">Total</td>
+                {coloSites.map((colo) => (
+                  <td key={colo.id} className="px-2 py-1.5 text-center text-xs font-mono tabular-nums font-medium">
+                    {formatCurrency(tech.rfLineItems.reduce((s, item) => s + (item.values[colo.id] || 0), 0))}
+                  </td>
+                ))}
+                <td className="px-1 py-1.5"></td>
+              </tr>
+            )}
             <tr className="border-t border-border/40">
               <td colSpan={coloSites.length + 3} className="px-3 py-1">
                 <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground/50 hover:text-primary transition-colors" onClick={addRFLineItem}>
