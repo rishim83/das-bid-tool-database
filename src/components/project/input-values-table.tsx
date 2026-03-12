@@ -268,7 +268,7 @@ export function InputValuesTable({ tech, coloSites, onChange, ntiMode = false }:
             </tr>
             <tr className="border-t border-border/25 group hover:bg-accent/30 transition-colors">
               <td className="px-3 py-1"></td>
-              <td className="px-3 py-1 text-xs text-muted-foreground text-right pr-4">Equipment Cost</td>
+              <td className="px-3 py-1 text-xs text-muted-foreground text-right pr-4">$&apos;s</td>
               {coloSites.map((colo) => (
                 <td key={colo.id} className="px-2 py-1 text-center">
                   <ValueInput value={tech.equipmentCost[colo.id] || 0} onChange={(val) => updateField("equipmentCost", colo.id, val)} />
