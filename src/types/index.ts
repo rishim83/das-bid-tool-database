@@ -246,11 +246,14 @@ export const DEFAULT_RENTAL_EQUIPMENT: RentalEquipment = {
 
 // ─── Full Project ───────────────────────────────────────────────
 
+export type BidType = "network_connex" | "nti";
+
 export interface Project {
   id: string;
   name: string;
   client: string;
   status: "draft" | "completed" | "archived";
+  bidType?: BidType;
   inputParameters: InputParameters;
   schedule: Schedule;
   pmTravel: PMTravelEstimate;

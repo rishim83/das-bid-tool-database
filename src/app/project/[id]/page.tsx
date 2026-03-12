@@ -661,6 +661,187 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
     URL.revokeObjectURL(url);
   };
 
+  // ── NTI Export ────────────────────────────────────────────────────────────
+  const downloadNTIExcel = async () => {
+    const ExcelJS = (await import("exceljs")).default;
+    const wb = new ExcelJS.Workbook();
+    wb.creator = "DAS Bid Tool";
+
+    const p = project;
+    const techs = p.technologies.filter((t) => t.enabled);
+
+    // Style helpers (same palette as detailed export)
+    const NAVY_FILL   = { type: "pattern" as const, pattern: "solid" as const, fgColor: { argb: "FF1E3A5F" } };
+    const BLUE_FILL   = { type: "pattern" as const, pattern: "solid" as const, fgColor: { argb: "FF2563EB" } };
+    const TOTAL_FILL  = { type: "pattern" as const, pattern: "solid" as const, fgColor: { argb: "FFE2E8F0" } };
+    const WHITE_FILL  = { type: "pattern" as const, pattern: "solid" as const, fgColor: { argb: "FFFFFFFF" } };
+    const ALT_FILL    = { type: "pattern" as const, pattern: "solid" as const, fgColor: { argb: "FFF8FAFC" } };
+    const WHITE       = { argb: "FFFFFFFF" };
+    const BORDER      = { top: { style: "thin" as const, color: { argb: "FFE2E8F0" } }, bottom: { style: "thin" as const, color: { argb: "FFE2E8F0" } }, left: { style: "thin" as const, color: { argb: "FFE2E8F0" } }, right: { style: "thin" as const, color: { argb: "FFE2E8F0" } } };
+    const USD         = '"$"#,##0.00';
+    const TECH_FILL: Record<string, typeof NAVY_FILL> = {
+      DAS:           { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E3A5F" } },
+      PUBLIC_SAFETY: { type: "pattern", pattern: "solid", fgColor: { argb: "FF7C3AED" } },
+      ROIP:          { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F766E" } },
+    };
+
+    const ws = wb.addWorksheet("NTI Bid");
+    ws.columns = [
+      { width: 28 }, { width: 36 }, ...p.coloSites.map(() => ({ width: 18 as number })), { width: 18 },
+    ];
+
+    // Title row
+    const titleRow = ws.addRow([`NTI BID — ${p.name || "Project"}${p.client ? ` (${p.client})` : ""}`]);
+    ws.mergeCells(titleRow.number, 1, titleRow.number, 2 + p.coloSites.length + 1);
+    titleRow.getCell(1).fill = NAVY_FILL;
+    titleRow.getCell(1).font = { bold: true, size: 14, color: WHITE };
+    titleRow.getCell(1).alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+    titleRow.height = 30;
+
+    ws.addRow([]);
+
+    // Column header row: Section | Description | [colo names...] | Total
+    const colHdr = ws.addRow(["Section", "Description", ...p.coloSites.map((c) => c.name), "Total"]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    colHdr.eachCell({ includeEmpty: true }, (cell: any, cn: number) => {
+      cell.fill = BLUE_FILL;
+      cell.font = { bold: true, size: 10, color: WHITE };
+      cell.alignment = { vertical: "middle", horizontal: cn <= 2 ? "left" : "right" };
+      cell.border = BORDER;
+    });
+    colHdr.height = 20;
+
+    let grandTotal = 0;
+
+    techs.forEach((tech) => {
+      const tFill = TECH_FILL[tech.type] ?? NAVY_FILL;
+      // Tech header
+      const thRow = ws.addRow([TECHNOLOGY_LABELS[tech.type]]);
+      ws.mergeCells(thRow.number, 1, thRow.number, 2 + p.coloSites.length + 1);
+      thRow.getCell(1).fill = tFill;
+      thRow.getCell(1).font = { bold: true, size: 12, color: WHITE };
+      thRow.getCell(1).alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+      thRow.height = 24;
+
+      let techGrandTotal = 0;
+      let alt = false;
+
+      // RF Engineering items
+      tech.rfLineItems.forEach((item, idx) => {
+        const coloVals = p.coloSites.map((c) => item.values[c.id] || 0);
+        const rowTotal = coloVals.reduce((s, v) => s + v, 0);
+        techGrandTotal += rowTotal;
+        const r = ws.addRow([idx === 0 ? "RF Engineering" : "", item.description, ...coloVals, rowTotal]);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        r.eachCell({ includeEmpty: true }, (cell: any, cn: number) => {
+          cell.fill = alt ? ALT_FILL : WHITE_FILL;
+          cell.font = { size: 10 };
+          cell.alignment = { vertical: "middle", horizontal: cn <= 2 ? "left" : "right" };
+          cell.border = BORDER;
+        });
+        p.coloSites.forEach((_, i) => { r.getCell(3 + i).numFmt = USD; });
+        r.getCell(3 + p.coloSites.length).numFmt = USD;
+        r.height = 16;
+        alt = !alt;
+      });
+
+      // RF subtotal
+      const rfColoTotals = p.coloSites.map((c) => tech.rfLineItems.reduce((s, item) => s + (item.values[c.id] || 0), 0));
+      const rfTotal = rfColoTotals.reduce((s, v) => s + v, 0);
+      if (tech.rfLineItems.length > 0) {
+        const stRow = ws.addRow(["", "RF Engineering Total", ...rfColoTotals, rfTotal]);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        stRow.eachCell({ includeEmpty: true }, (cell: any, cn: number) => {
+          cell.fill = TOTAL_FILL;
+          cell.font = { bold: true, size: 10 };
+          cell.alignment = { vertical: "middle", horizontal: cn <= 2 ? "left" : "right" };
+          cell.border = BORDER;
+        });
+        p.coloSites.forEach((_, i) => { stRow.getCell(3 + i).numFmt = USD; });
+        stRow.getCell(3 + p.coloSites.length).numFmt = USD;
+        stRow.height = 17;
+        alt = false;
+      }
+
+      // Install Cost row
+      const installColoVals = p.coloSites.map((c) => tech.installLaborHours[c.id] || 0);
+      const installTotal = installColoVals.reduce((s, v) => s + v, 0);
+      techGrandTotal += installTotal;
+      const instRow = ws.addRow(["Install Cost", "", ...installColoVals, installTotal]);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      instRow.eachCell({ includeEmpty: true }, (cell: any, cn: number) => {
+        cell.fill = alt ? ALT_FILL : WHITE_FILL;
+        cell.font = { size: 10 };
+        cell.alignment = { vertical: "middle", horizontal: cn <= 2 ? "left" : "right" };
+        cell.border = BORDER;
+      });
+      p.coloSites.forEach((_, i) => { instRow.getCell(3 + i).numFmt = USD; });
+      instRow.getCell(3 + p.coloSites.length).numFmt = USD;
+      instRow.height = 16;
+      alt = !alt;
+
+      // Equipment Cost row
+      const equipColoVals = p.coloSites.map((c) => tech.equipmentCost[c.id] || 0);
+      const equipTotal = equipColoVals.reduce((s, v) => s + v, 0);
+      techGrandTotal += equipTotal;
+      const eqRow = ws.addRow(["Equipment Cost", "", ...equipColoVals, equipTotal]);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      eqRow.eachCell({ includeEmpty: true }, (cell: any, cn: number) => {
+        cell.fill = alt ? ALT_FILL : WHITE_FILL;
+        cell.font = { size: 10 };
+        cell.alignment = { vertical: "middle", horizontal: cn <= 2 ? "left" : "right" };
+        cell.border = BORDER;
+      });
+      p.coloSites.forEach((_, i) => { eqRow.getCell(3 + i).numFmt = USD; });
+      eqRow.getCell(3 + p.coloSites.length).numFmt = USD;
+      eqRow.height = 16;
+
+      // Tech total
+      const techColoTotals = p.coloSites.map((c) =>
+        tech.rfLineItems.reduce((s, item) => s + (item.values[c.id] || 0), 0) +
+        (tech.installLaborHours[c.id] || 0) +
+        (tech.equipmentCost[c.id] || 0)
+      );
+      const tTotRow = ws.addRow(["", `${TECHNOLOGY_LABELS[tech.type]} Total`, ...techColoTotals, techGrandTotal]);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      tTotRow.eachCell({ includeEmpty: true }, (cell: any, cn: number) => {
+        cell.fill = tFill;
+        cell.font = { bold: true, size: 10, color: WHITE };
+        cell.alignment = { vertical: "middle", horizontal: cn <= 2 ? "left" : "right" };
+        cell.border = BORDER;
+      });
+      p.coloSites.forEach((_, i) => { tTotRow.getCell(3 + i).numFmt = USD; });
+      tTotRow.getCell(3 + p.coloSites.length).numFmt = USD;
+      tTotRow.height = 18;
+      ws.addRow([]);
+
+      grandTotal += techGrandTotal;
+    });
+
+    // Grand total row
+    const gtRow = ws.addRow(["GRAND TOTAL", "", ...p.coloSites.map(() => null), grandTotal]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    gtRow.eachCell({ includeEmpty: true }, (cell: any, cn: number) => {
+      cell.fill = NAVY_FILL;
+      cell.font = { bold: true, size: 11, color: WHITE };
+      cell.alignment = { vertical: "middle", horizontal: cn <= 2 ? "left" : "right" };
+      cell.border = BORDER;
+    });
+    gtRow.getCell(3 + p.coloSites.length).numFmt = USD;
+    gtRow.height = 22;
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer as ArrayBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${p.name || "Project"} - NTI Bid.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const isNTI = project.bidType === "nti";
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -687,99 +868,160 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
           </div>
           <div className="flex items-center gap-2">
             <SaveIndicator status={saveStatus} />
-            <AIEstimateDialog project={project} onApply={applyBulkUpdate} />
-            <Button onClick={() => { downloadDetailedExcel().catch(console.error); }} size="sm" variant="outline" className="h-7 text-xs">
-              <FileSpreadsheet className="h-3 w-3 mr-1" /> Export Details
+            {/* Bid type toggle */}
+            <div className="flex items-center rounded-md border border-border/60 overflow-hidden h-7 text-xs">
+              <button
+                onClick={() => updateProjectMeta({ bidType: "network_connex" })}
+                className={`px-3 h-full transition-colors ${!isNTI ? "bg-primary text-primary-foreground font-medium" : "text-muted-foreground hover:bg-accent"}`}
+              >
+                Network Connex
+              </button>
+              <button
+                onClick={() => updateProjectMeta({ bidType: "nti" })}
+                className={`px-3 h-full border-l border-border/60 transition-colors ${isNTI ? "bg-primary text-primary-foreground font-medium" : "text-muted-foreground hover:bg-accent"}`}
+              >
+                NTI
+              </button>
+            </div>
+            {!isNTI && <AIEstimateDialog project={project} onApply={applyBulkUpdate} />}
+            <Button onClick={() => { (isNTI ? downloadNTIExcel() : downloadDetailedExcel()).catch(console.error); }} size="sm" variant="outline" className="h-7 text-xs">
+              <FileSpreadsheet className="h-3 w-3 mr-1" /> Export
             </Button>
             <ThemeToggle />
           </div>
         </div>
       </div>
 
-      <div className="max-w-[1600px] mx-auto px-5 py-5 space-y-4">
-        {/* Parameters Panel */}
-        <ParametersPanel
-          params={project.inputParameters}
-          onParamsChange={updateInputParameters}
-          pmTravel={project.pmTravel}
-          pmTravelCalculated={pmTravelCalculated}
-          onPMTravelChange={updatePMTravel}
-          installTravel={project.installTravel ?? DEFAULT_INSTALL_TRAVEL}
-          installTravelCalc={installTravelCalc}
-          onInstallTravelChange={updateInstallTravel}
-          numberOfGuys={fullSchedule.numberOfGuys}
-          onNumberOfGuysChange={(n) => updateSchedule({ ...fullSchedule, numberOfGuys: n })}
-          projectSpecificDetails={psd}
-          onProjectSpecificDetailsChange={updateProjectSpecificDetails}
-        />
-        <PerTechDetailsCard
-          technologies={project.technologies.filter((t) => t.enabled)}
-          onChange={updateTechnology}
-        />
-        <LaborSummary
-          technologies={project.technologies}
-          hoursPerDay={project.inputParameters.hoursPerDay ?? 8}
-          daysPerWeek={project.inputParameters.daysPerWeek ?? 5}
-          numberOfGuys={project.schedule.numberOfGuys}
-        />
-        <MaterialsSummary technologies={project.technologies} />
+      {isNTI ? (
+        /* ── NTI Bid Layout ───────────────────────────────────────────── */
+        <div className="max-w-[1600px] mx-auto px-5 py-5 space-y-4">
+          {/* COLO Sites */}
+          <div className="border border-border/60 rounded-lg px-4 py-2.5 bg-card/50">
+            <ColoManager coloSites={project.coloSites} onChange={updateColoSites} />
+          </div>
 
-        {/* COLO Sites */}
-        <div className="border border-border/60 rounded-lg px-4 py-2.5 bg-card/50">
-          <ColoManager coloSites={project.coloSites} onChange={updateColoSites} />
+          {/* NTI Technology Tabs — all three, input values + BOM import only */}
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TechnologyType)}>
+            <TabsList className="h-8 p-0.5 bg-muted/60 rounded-lg w-auto inline-flex gap-0.5 border border-border/30">
+              {(["DAS", "PUBLIC_SAFETY", "ROIP"] as TechnologyType[]).map((type) => (
+                <TabsTrigger key={type} value={type} className="h-7 px-4 rounded-md text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  {TECHNOLOGY_LABELS[type]}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            {(["DAS", "PUBLIC_SAFETY", "ROIP"] as TechnologyType[]).map((type) => {
+              const tech = project.technologies.find((t) => t.type === type);
+              if (!tech) return null;
+              return (
+                <TabsContent key={type} value={type} className="space-y-4 mt-3">
+                  <div className="flex justify-end">
+                    <BomImportDialog
+                      tech={tech}
+                      coloSites={project.coloSites}
+                      onApply={updateTechnology}
+                      projectSpecificDetails={psd}
+                      numberOfGuys={project.schedule.numberOfGuys}
+                      hoursPerDay={project.inputParameters.hoursPerDay ?? 8}
+                      daysPerWeek={project.inputParameters.daysPerWeek ?? 5}
+                    />
+                  </div>
+                  <InputValuesTable tech={tech} coloSites={project.coloSites} onChange={updateTechnology} ntiMode />
+                </TabsContent>
+              );
+            })}
+          </Tabs>
+
+          {/* NTI sticky total bar */}
+          <div className="h-14" />
         </div>
+      ) : (
+        /* ── Network Connex Layout ────────────────────────────────────── */
+        <div className="max-w-[1600px] mx-auto px-5 py-5 space-y-4">
+          {/* Parameters Panel */}
+          <ParametersPanel
+            params={project.inputParameters}
+            onParamsChange={updateInputParameters}
+            pmTravel={project.pmTravel}
+            pmTravelCalculated={pmTravelCalculated}
+            onPMTravelChange={updatePMTravel}
+            installTravel={project.installTravel ?? DEFAULT_INSTALL_TRAVEL}
+            installTravelCalc={installTravelCalc}
+            onInstallTravelChange={updateInstallTravel}
+            numberOfGuys={fullSchedule.numberOfGuys}
+            onNumberOfGuysChange={(n) => updateSchedule({ ...fullSchedule, numberOfGuys: n })}
+            projectSpecificDetails={psd}
+            onProjectSpecificDetailsChange={updateProjectSpecificDetails}
+          />
+          <PerTechDetailsCard
+            technologies={project.technologies.filter((t) => t.enabled)}
+            onChange={updateTechnology}
+          />
+          <LaborSummary
+            technologies={project.technologies}
+            hoursPerDay={project.inputParameters.hoursPerDay ?? 8}
+            daysPerWeek={project.inputParameters.daysPerWeek ?? 5}
+            numberOfGuys={project.schedule.numberOfGuys}
+          />
+          <MaterialsSummary technologies={project.technologies} />
 
-        {/* Technology Tabs */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TechnologyType)}>
-          <TabsList className="h-8 p-0.5 bg-muted/60 rounded-lg w-auto inline-flex gap-0.5 border border-border/30">
-            {(["DAS", "PUBLIC_SAFETY", "ROIP"] as TechnologyType[]).map((type) => (
-              <TabsTrigger key={type} value={type} className="h-7 px-4 rounded-md text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                {TECHNOLOGY_LABELS[type]}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+          {/* COLO Sites */}
+          <div className="border border-border/60 rounded-lg px-4 py-2.5 bg-card/50">
+            <ColoManager coloSites={project.coloSites} onChange={updateColoSites} />
+          </div>
 
-          {(["DAS", "PUBLIC_SAFETY", "ROIP"] as TechnologyType[]).map((type) => {
-            const tech = project.technologies.find((t) => t.type === type);
-            const quote = quotes.find((q) => q.type === type);
-            if (!tech) return null;
-            const techRentalMarkup = tech.enabled ? getTechRentalMarkup(tech) : 0;
-            const techSubMarkup = tech.enabled ? getTechSubMarkup(tech) : 0;
-            return (
-              <TabsContent key={type} value={type} className="space-y-4 mt-3">
-                <div className="flex justify-end">
-                  <BomImportDialog
-                    tech={tech}
+          {/* Technology Tabs */}
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TechnologyType)}>
+            <TabsList className="h-8 p-0.5 bg-muted/60 rounded-lg w-auto inline-flex gap-0.5 border border-border/30">
+              {(["DAS", "PUBLIC_SAFETY", "ROIP"] as TechnologyType[]).map((type) => (
+                <TabsTrigger key={type} value={type} className="h-7 px-4 rounded-md text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  {TECHNOLOGY_LABELS[type]}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            {(["DAS", "PUBLIC_SAFETY", "ROIP"] as TechnologyType[]).map((type) => {
+              const tech = project.technologies.find((t) => t.type === type);
+              const quote = quotes.find((q) => q.type === type);
+              if (!tech) return null;
+              const techRentalMarkup = tech.enabled ? getTechRentalMarkup(tech) : 0;
+              const techSubMarkup = tech.enabled ? getTechSubMarkup(tech) : 0;
+              return (
+                <TabsContent key={type} value={type} className="space-y-4 mt-3">
+                  <div className="flex justify-end">
+                    <BomImportDialog
+                      tech={tech}
+                      coloSites={project.coloSites}
+                      onApply={updateTechnology}
+                      projectSpecificDetails={psd}
+                      numberOfGuys={project.schedule.numberOfGuys}
+                      hoursPerDay={project.inputParameters.hoursPerDay ?? 8}
+                      daysPerWeek={project.inputParameters.daysPerWeek ?? 5}
+                    />
+                  </div>
+                  <InputValuesTable tech={tech} coloSites={project.coloSites} onChange={updateTechnology} />
+                  {quote && <QuoteTable
+                    quote={quote}
                     coloSites={project.coloSites}
-                    onApply={updateTechnology}
-                    projectSpecificDetails={psd}
-                    numberOfGuys={project.schedule.numberOfGuys}
-                    hoursPerDay={project.inputParameters.hoursPerDay ?? 8}
-                    daysPerWeek={project.inputParameters.daysPerWeek ?? 5}
-                  />
-                </div>
-                <InputValuesTable tech={tech} coloSites={project.coloSites} onChange={updateTechnology} />
-                {quote && <QuoteTable
-                  quote={quote}
-                  coloSites={project.coloSites}
-                  rentalMarkupCost={techRentalMarkup}
-                  adminPercent={adminPercent}
-                  subContractorTotal={techSubMarkup}
-                  taxPercent={taxPercent}
-                  installTravelActive={installTravelCalc !== null}
-                />}
-              </TabsContent>
-            );
-          })}
-        </Tabs>
+                    rentalMarkupCost={techRentalMarkup}
+                    adminPercent={adminPercent}
+                    subContractorTotal={techSubMarkup}
+                    taxPercent={taxPercent}
+                    installTravelActive={installTravelCalc !== null}
+                  />}
+                </TabsContent>
+              );
+            })}
+          </Tabs>
 
-        {quotes.length > 0 && <ProjectSummary quotes={quotes} projectSpecificDetails={psd} rentalMarkupTotal={rentalMarkupTotal} totalAdminValue={totalAdminValue} subMarkupTotal={subMarkupTotal} techTotals={techTotals} totalTaxValue={totalTaxValue} />}
-        {quotes.length > 0 && <FinancialReview items={financialItems} />}
-        <div className="h-14" />
-      </div>
+          {quotes.length > 0 && <ProjectSummary quotes={quotes} projectSpecificDetails={psd} rentalMarkupTotal={rentalMarkupTotal} totalAdminValue={totalAdminValue} subMarkupTotal={subMarkupTotal} techTotals={techTotals} totalTaxValue={totalTaxValue} />}
+          {quotes.length > 0 && <FinancialReview items={financialItems} />}
+          <div className="h-14" />
+        </div>
+      )}
 
-      {/* Sticky total bar */}
-      {quotes.length > 0 && (
+      {/* Sticky total bar — NC mode only */}
+      {!isNTI && quotes.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-20 sticky-bar-blur">
           <div className="max-w-[1600px] mx-auto px-5 py-2.5 flex items-center justify-between">
             <div className="flex items-center gap-5">

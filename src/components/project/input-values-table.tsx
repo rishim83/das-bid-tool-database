@@ -25,6 +25,7 @@ interface Props {
   tech: TechnologyConfig;
   coloSites: ColoSite[];
   onChange: (tech: TechnologyConfig) => void;
+  ntiMode?: boolean;
 }
 
 function ValueInput({
@@ -70,7 +71,7 @@ function CopyBtn({ onClick, label }: { onClick: () => void; label: string }) {
   );
 }
 
-export function InputValuesTable({ tech, coloSites, onChange }: Props) {
+export function InputValuesTable({ tech, coloSites, onChange, ntiMode = false }: Props) {
   const label = TECHNOLOGY_LABELS[tech.type];
   const dotColor = TECHNOLOGY_DOT[tech.type];
 
@@ -246,7 +247,7 @@ export function InputValuesTable({ tech, coloSites, onChange }: Props) {
             </tr>
             <tr className="border-t border-border/25 group hover:bg-accent/30 transition-colors">
               <td className="px-3 py-1"></td>
-              <td className="px-3 py-1 text-xs text-muted-foreground text-right pr-4">Labor Hours</td>
+              <td className="px-3 py-1 text-xs text-muted-foreground text-right pr-4">{ntiMode ? "Install Cost" : "Labor Hours"}</td>
               {coloSites.map((colo) => (
                 <td key={colo.id} className="px-2 py-1 text-center">
                   <ValueInput value={tech.installLaborHours[colo.id] || 0} onChange={(val) => updateField("installLaborHours", colo.id, val)} />
@@ -280,26 +281,30 @@ export function InputValuesTable({ tech, coloSites, onChange }: Props) {
               </td>
             </tr>
 
-            {/* PM */}
-            <tr>
-              <td colSpan={coloSites.length + 3} className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50 bg-secondary/40 border-y border-border/20">
-                PM
-              </td>
-            </tr>
-            <tr className="border-t border-border/25 group hover:bg-accent/30 transition-colors">
-              <td className="px-3 py-1"></td>
-              <td className="px-3 py-1 text-xs text-muted-foreground text-right pr-4">PM Trips</td>
-              {coloSites.map((colo) => (
-                <td key={colo.id} className="px-2 py-1 text-center">
-                  <ValueInput value={tech.pmTrips[colo.id] || 0} onChange={(val) => updateField("pmTrips", colo.id, val)} width="w-20" step="1" />
-                </td>
-              ))}
-              <td className="px-1 py-1">
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                  <CopyBtn onClick={() => copyFieldToAll("pmTrips")} label={`Copy ${coloSites[0]?.name || "first"} to all`} />
-                </div>
-              </td>
-            </tr>
+            {/* PM — hidden in NTI mode */}
+            {!ntiMode && (
+              <>
+                <tr>
+                  <td colSpan={coloSites.length + 3} className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50 bg-secondary/40 border-y border-border/20">
+                    PM
+                  </td>
+                </tr>
+                <tr className="border-t border-border/25 group hover:bg-accent/30 transition-colors">
+                  <td className="px-3 py-1"></td>
+                  <td className="px-3 py-1 text-xs text-muted-foreground text-right pr-4">PM Trips</td>
+                  {coloSites.map((colo) => (
+                    <td key={colo.id} className="px-2 py-1 text-center">
+                      <ValueInput value={tech.pmTrips[colo.id] || 0} onChange={(val) => updateField("pmTrips", colo.id, val)} width="w-20" step="1" />
+                    </td>
+                  ))}
+                  <td className="px-1 py-1">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      <CopyBtn onClick={() => copyFieldToAll("pmTrips")} label={`Copy ${coloSites[0]?.name || "first"} to all`} />
+                    </div>
+                  </td>
+                </tr>
+              </>
+            )}
           </tbody>
         </table>
       </div>

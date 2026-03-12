@@ -144,7 +144,7 @@ export function useProject(initialProject: Project) {
   }, []);
 
   const updateProjectMeta = useCallback(
-    (fields: Partial<Pick<Project, "name" | "client" | "status">>) => {
+    (fields: Partial<Pick<Project, "name" | "client" | "status" | "bidType">>) => {
       setProject((p) => ({ ...p, ...fields }));
     },
     []
