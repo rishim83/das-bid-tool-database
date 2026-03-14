@@ -101,7 +101,7 @@ export function NTIReportPreview({ tech, coloSites, materialContingency, laborCo
       totalMat > 0 ? totalMat.toFixed(2) : "",
       totalLab > 0 ? totalLab.toFixed(4) : "",
     ];
-    const tsv = [headers, ...dataRows, totalRow]
+    const tsv = [...dataRows, totalRow]
       .map((row) => row.join("\t"))
       .join("\n");
     navigator.clipboard.writeText(tsv).then(() => {
