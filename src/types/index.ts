@@ -254,6 +254,8 @@ export interface Project {
   client: string;
   status: "draft" | "completed" | "archived";
   bidType?: BidType;
+  ntiMaterialContingency?: number;  // percentage, e.g. 5 = 5%
+  ntiLaborContingency?: number;     // percentage, e.g. 5 = 5%
   inputParameters: InputParameters;
   schedule: Schedule;
   pmTravel: PMTravelEstimate;

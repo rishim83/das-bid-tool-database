@@ -900,6 +900,39 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
             <ColoManager coloSites={project.coloSites} onChange={updateColoSites} />
           </div>
 
+          {/* NTI Contingency Inputs */}
+          <div className="border border-border/60 rounded-lg bg-card px-4 py-3 flex items-center gap-6">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Contingency</span>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground whitespace-nowrap">Material</label>
+              <div className="flex items-center gap-1">
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={project.ntiMaterialContingency ?? 0}
+                  onChange={(e) => updateProjectMeta({ ntiMaterialContingency: parseFloat(e.target.value) || 0 })}
+                  className="h-7 w-20 bg-input/40 border-border/50 text-right text-sm font-mono tabular-nums rounded-md"
+                />
+                <span className="text-xs text-muted-foreground">%</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground whitespace-nowrap">Labor</label>
+              <div className="flex items-center gap-1">
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={project.ntiLaborContingency ?? 0}
+                  onChange={(e) => updateProjectMeta({ ntiLaborContingency: parseFloat(e.target.value) || 0 })}
+                  className="h-7 w-20 bg-input/40 border-border/50 text-right text-sm font-mono tabular-nums rounded-md"
+                />
+                <span className="text-xs text-muted-foreground">%</span>
+              </div>
+            </div>
+          </div>
+
           {/* NTI Technology Tabs — all three, input values + BOM import only */}
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TechnologyType)}>
             <TabsList className="h-8 p-0.5 bg-muted/60 rounded-lg w-auto inline-flex gap-0.5 border border-border/30">
@@ -924,6 +957,8 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
                       numberOfGuys={project.schedule.numberOfGuys}
                       hoursPerDay={project.inputParameters.hoursPerDay ?? 8}
                       daysPerWeek={project.inputParameters.daysPerWeek ?? 5}
+                      materialContingency={project.ntiMaterialContingency ?? 0}
+                      laborContingency={project.ntiLaborContingency ?? 0}
                     />
                   </div>
                   <InputValuesTable tech={tech} coloSites={project.coloSites} onChange={updateTechnology} ntiMode />

@@ -49,6 +49,8 @@ interface Props {
   numberOfGuys?: number;
   hoursPerDay?: number;
   daysPerWeek?: number;
+  materialContingency?: number;  // percentage, e.g. 5 = 5%
+  laborContingency?: number;     // percentage, e.g. 5 = 5%
 }
 
 export function BomImportDialog({
@@ -59,6 +61,8 @@ export function BomImportDialog({
   numberOfGuys = 1,
   hoursPerDay = 8,
   daysPerWeek = 5,
+  materialContingency = 0,
+  laborContingency = 0,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -312,11 +316,14 @@ export function BomImportDialog({
     // Include Water & Ice and Additional Materials in the equipment cost total
     const waterAndIceRaw = tech.waterAndIce ?? 0;
     const addlMaterialsRaw = (tech.additionalMaterials ?? []).reduce((s, m) => s + (m.value || 0), 0);
-    const totalEquipmentWithExtras = totalEquipment + waterAndIceRaw + addlMaterialsRaw;
+    const matMult = 1 + materialContingency / 100;
+    const labMult = 1 + laborContingency / 100;
+    const totalEquipmentWithExtras = totalEquipment * matMult + waterAndIceRaw + addlMaterialsRaw;
+    const totalHoursWithContingency = totalHours * labMult;
 
     for (const d of distribution) {
       const pct = d.percentage / 100;
-      installLaborHours[d.coloId] = Math.round(totalHours * pct * 100) / 100;
+      installLaborHours[d.coloId] = Math.round(totalHoursWithContingency * pct * 100) / 100;
       equipmentCost[d.coloId] = Math.round(totalEquipmentWithExtras * pct * 100) / 100;
     }
 
@@ -364,7 +371,7 @@ export function BomImportDialog({
 
     onApply({ ...tech, installLaborHours, equipmentCost, laborHoursBreakdown, equipmentCostBreakdown, bomReportRows });
     toast.success(
-      `BOM applied — ${totalHours.toFixed(1)} hrs · ${formatCurrency(totalEquipmentWithExtras)} equipment`
+      `BOM applied — ${totalHoursWithContingency.toFixed(1)} hrs · ${formatCurrency(totalEquipmentWithExtras)} equipment`
     );
     setOpen(false);
     // Do not reset — keep analysis alive so Download Report stays available.
@@ -373,18 +380,35 @@ export function BomImportDialog({
   const handleDownload = () => {
     if (!analysis) return;
 
+    // Columns: A=Part#, B=Manufacturer, C=(empty), D=QTY,
+    //          E=Material Unit Cost (w/ contingency), F=Labor Unit Hours (w/ contingency),
+    //          G=RF Services ($), H=Material Total Cost, I=Labor Total Hours
+    const matMult = 1 + materialContingency / 100;
+    const labMult = 1 + laborContingency / 100;
+
     const header = [
       "Part Number",
       "Manufacturer",
       "",
       "QTY",
-      "Material Unit Cost",
-      "Labor Unit Hours",
+      `Material Unit Cost${materialContingency > 0 ? ` (+${materialContingency}%)` : ""}`,
+      `Labor Unit Hours${laborContingency > 0 ? ` (+${laborContingency}%)` : ""}`,
+      "RF Services ($)",
       "Material Total Cost",
       "Labor Total Hours",
     ];
 
+    // RF Services rows — one row per line item, value = sum across all colos
+    const rfRows = tech.rfLineItems
+      .filter((item) => coloSites.some((c) => (item.values[c.id] || 0) > 0))
+      .map((item) => {
+        const rfTotal = coloSites.reduce((s, c) => s + (item.values[c.id] || 0), 0);
+        return ["RF", item.description || "RF Engineering", "", 1, 0, 0, rfTotal, 0, 0];
+      });
+
     const dataRows = [
+      // RF Services section first
+      ...rfRows,
       // Matched items
       ...analysis.matched.map((item) => {
         const unitPrice = excludeMaterials ? 0 :
@@ -395,28 +419,36 @@ export function BomImportDialog({
           item.unitLaborHours === 0
             ? (laborOverrides[item.partNumber] ?? 0)
             : item.unitLaborHours;
+        const adjPrice = unitPrice * matMult;
+        const adjLabor = unitLabor * labMult;
         return [
           item.partNumber,
           item.manufacturer || "",
           "",
           item.quantity,
-          unitPrice,
-          unitLabor,
-          unitPrice * item.quantity,
-          unitLabor * item.quantity,
+          adjPrice,
+          adjLabor,
+          "",
+          adjPrice * item.quantity,
+          adjLabor * item.quantity,
         ];
       }),
       // Unmatched items (with current user-entered values)
-      ...unmatched.map((item) => [
-        item.partNumber,
-        item.manufacturer || "",
-        "",
-        item.quantity,
-        excludeMaterials ? 0 : item.unitEquipmentPrice,
-        item.unitLaborHours,
-        excludeMaterials ? 0 : item.unitEquipmentPrice * item.quantity,
-        item.unitLaborHours * item.quantity,
-      ]),
+      ...unmatched.map((item) => {
+        const adjPrice = (excludeMaterials ? 0 : item.unitEquipmentPrice) * matMult;
+        const adjLabor = item.unitLaborHours * labMult;
+        return [
+          item.partNumber,
+          item.manufacturer || "",
+          "",
+          item.quantity,
+          adjPrice,
+          adjLabor,
+          "",
+          adjPrice * item.quantity,
+          adjLabor * item.quantity,
+        ];
+      }),
       // Cores addition
       ...(coresAddedHours > 0
         ? [[
@@ -425,9 +457,10 @@ export function BomImportDialog({
             "",
             projectSpecificDetails!.cores.count,
             0,
-            pccHoursPerUnit,
+            pccHoursPerUnit * labMult,
+            "",
             0,
-            coresAddedHours,
+            coresAddedHours * labMult,
           ]]
         : []),
       // Badging/Safety — hardcoded 4 hrs per tech
@@ -438,9 +471,10 @@ export function BomImportDialog({
             "",
             numberOfGuys,
             0,
-            4,
+            4 * labMult,
+            "",
             0,
-            badgingAddedHours,
+            badgingAddedHours * labMult,
           ]]
         : []),
       // Material Handling
@@ -451,9 +485,10 @@ export function BomImportDialog({
             "",
             1,
             0,
-            materialHandlingHours,
+            materialHandlingHours * labMult,
+            "",
             0,
-            materialHandlingHours,
+            materialHandlingHours * labMult,
           ]]
         : []),
       // Commissioning Support
@@ -464,50 +499,52 @@ export function BomImportDialog({
             "",
             1,
             0,
-            commissioningHours,
+            commissioningHours * labMult,
+            "",
             0,
-            commissioningHours,
+            commissioningHours * labMult,
           ]]
         : []),
-      // Additional Labor items (each as its own row)
+      // Additional Labor items
       ...additionalLaborItemsData.map((item) => [
         "ADDL",
         item.description || "Additional Labor",
         "",
         1,
         0,
-        item.hours,
+        item.hours * labMult,
+        "",
         0,
-        item.hours,
+        item.hours * labMult,
       ]),
-      // Extras (hours derived from base hours)
+      // Extras
       ...(shuttleHours > 0
-        ? [["SHUTTLE", `Shuttle Services (${baseDays.toFixed(1)} project days × 1 hr)`, "", 1, 0, shuttleHours, 0, shuttleHours]]
+        ? [["SHUTTLE", `Shuttle Services (${baseDays.toFixed(1)} project days × 1 hr)`, "", 1, 0, shuttleHours * labMult, "", 0, shuttleHours * labMult]]
         : []),
       ...(stretchHours > 0
-        ? [["S&F", `Stretch & Flex (${baseDays.toFixed(1)} project days × 0.5 hrs)`, "", 1, 0, stretchHours, 0, stretchHours]]
+        ? [["S&F", `Stretch & Flex (${baseDays.toFixed(1)} project days × 0.5 hrs)`, "", 1, 0, stretchHours * labMult, "", 0, stretchHours * labMult]]
         : []),
       ...(compositeHours > 0
-        ? [["CLEANUP", `Composite Cleanup (${baseWeeks.toFixed(1)} wks × 8 hrs)`, "", 1, 0, compositeHours, 0, compositeHours]]
+        ? [["CLEANUP", `Composite Cleanup (${baseWeeks.toFixed(1)} wks × 8 hrs)`, "", 1, 0, compositeHours * labMult, "", 0, compositeHours * labMult]]
         : []),
       ...(liftHours > 0
-        ? [["LIFT", `Lift Spotters (65% × ${baseHours.toFixed(1)} hrs ÷ ${guys} guys)`, "", 1, 0, liftHours, 0, liftHours]]
+        ? [["LIFT", `Lift Spotters (65% × ${baseHours.toFixed(1)} hrs ÷ ${guys} guys)`, "", 1, 0, liftHours * labMult, "", 0, liftHours * labMult]]
         : []),
-      // Water & Ice (per-tech dollar value)
+      // Water & Ice (not subject to material contingency — it's a direct cost)
       ...((tech.waterAndIce ?? 0) > 0
-        ? [["W&I", "Water & Ice (Tech Level)", "", 1, tech.waterAndIce, 0, tech.waterAndIce, 0]]
+        ? [["W&I", "Water & Ice (Tech Level)", "", 1, tech.waterAndIce, 0, "", tech.waterAndIce, 0]]
         : []),
-      // Additional Materials (per-tech dollar values)
+      // Additional Materials (not subject to material contingency)
       ...(tech.additionalMaterials ?? [])
         .filter((m) => (m.value || 0) > 0)
-        .map((m) => ["ADDL-MAT", m.name || "Additional Material", "", 1, m.value, 0, m.value, 0]),
+        .map((m) => ["ADDL-MAT", m.name || "Additional Material", "", 1, m.value, 0, "", m.value, 0]),
     ];
 
     const ws = XLSX.utils.aoa_to_sheet([header, ...dataRows]);
-    // Set column widths
+    // Set column widths: A, B, C, D, E, F, G, H, I
     ws["!cols"] = [
-      { wch: 22 }, { wch: 20 }, { wch: 4 }, { wch: 6 },
-      { wch: 18 }, { wch: 16 }, { wch: 20 }, { wch: 18 },
+      { wch: 22 }, { wch: 28 }, { wch: 4 }, { wch: 6 },
+      { wch: 22 }, { wch: 22 }, { wch: 18 }, { wch: 20 }, { wch: 18 },
     ];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "BOM Report");
