@@ -277,7 +277,7 @@ export function BomImportDialog({
     (s, m) => s + (laborOverrides[m.partNumber] ?? 0) * m.quantity,
     0
   );
-  const excludeMaterials = !!(projectSpecificDetails?.extras?.excludeMaterials);
+  const excludeMaterials = !ntiMode && !!(projectSpecificDetails?.extras?.excludeMaterials);
   const totalEquipment = excludeMaterials ? 0 : (analysis?.totalEquipmentCost ?? 0) + extraEquip + overrideEquipTotal;
 
   // ── Labor hour breakdown ──────────────────────────────────────
@@ -320,8 +320,16 @@ export function BomImportDialog({
     const addlMaterialsRaw = (tech.additionalMaterials ?? []).reduce((s, m) => s + (m.value || 0), 0);
     const matMult = 1 + materialContingency / 100;
     const labMult = 1 + laborContingency / 100;
-    const totalEquipmentWithExtras = totalEquipment * matMult + waterAndIceRaw + addlMaterialsRaw;
-    const totalHoursWithContingency = totalHours * labMult;
+    // NTI: only BOM equipment (no water/ice or additional materials added)
+    // NC:  BOM + water/ice + additional materials
+    const totalEquipmentWithExtras = ntiMode
+      ? totalEquipment * matMult
+      : totalEquipment * matMult + waterAndIceRaw + addlMaterialsRaw;
+    // NTI: only raw BOM hours (no NC extras like cores, badging, MH, etc.)
+    // NC:  full totalHours including all extras
+    const totalHoursWithContingency = ntiMode
+      ? bomHours * labMult
+      : totalHours * labMult;
 
     for (const d of distribution) {
       const pct = d.percentage / 100;
