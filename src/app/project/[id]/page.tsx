@@ -959,6 +959,7 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
                       daysPerWeek={project.inputParameters.daysPerWeek ?? 5}
                       materialContingency={project.ntiMaterialContingency ?? 0}
                       laborContingency={project.ntiLaborContingency ?? 0}
+                      ntiMode
                     />
                   </div>
                   <InputValuesTable tech={tech} coloSites={project.coloSites} onChange={updateTechnology} ntiMode />

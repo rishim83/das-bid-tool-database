@@ -51,6 +51,7 @@ interface Props {
   daysPerWeek?: number;
   materialContingency?: number;  // percentage, e.g. 5 = 5%
   laborContingency?: number;     // percentage, e.g. 5 = 5%
+  ntiMode?: boolean;
 }
 
 export function BomImportDialog({
@@ -63,6 +64,7 @@ export function BomImportDialog({
   daysPerWeek = 5,
   materialContingency = 0,
   laborContingency = 0,
+  ntiMode = false,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -449,95 +451,98 @@ export function BomImportDialog({
           adjLabor * item.quantity,
         ];
       }),
-      // Cores addition
-      ...(coresAddedHours > 0
-        ? [[
-            "PCC",
-            `Cores (${projectSpecificDetails!.cores.count} cores × ${pccHoursPerUnit} hrs/core)`,
-            "",
-            projectSpecificDetails!.cores.count,
-            0,
-            pccHoursPerUnit * labMult,
-            "",
-            0,
-            coresAddedHours * labMult,
-          ]]
-        : []),
-      // Badging/Safety — hardcoded 4 hrs per tech
-      ...(badgingAddedHours > 0
-        ? [[
-            "BADGE",
-            `Badging / Safety (${numberOfGuys} techs × 4 hrs)`,
-            "",
-            numberOfGuys,
-            0,
-            4 * labMult,
-            "",
-            0,
-            badgingAddedHours * labMult,
-          ]]
-        : []),
-      // Material Handling
-      ...(materialHandlingHours > 0
-        ? [[
-            "MH",
-            "Material Handling (Tech Level)",
-            "",
-            1,
-            0,
-            materialHandlingHours * labMult,
-            "",
-            0,
-            materialHandlingHours * labMult,
-          ]]
-        : []),
-      // Commissioning Support
-      ...(commissioningHours > 0
-        ? [[
-            "COMM",
-            "Commissioning Support (Tech Level)",
-            "",
-            1,
-            0,
-            commissioningHours * labMult,
-            "",
-            0,
-            commissioningHours * labMult,
-          ]]
-        : []),
-      // Additional Labor items
-      ...additionalLaborItemsData.map((item) => [
-        "ADDL",
-        item.description || "Additional Labor",
-        "",
-        1,
-        0,
-        item.hours * labMult,
-        "",
-        0,
-        item.hours * labMult,
-      ]),
-      // Extras
-      ...(shuttleHours > 0
-        ? [["SHUTTLE", `Shuttle Services (${baseDays.toFixed(1)} project days × 1 hr)`, "", 1, 0, shuttleHours * labMult, "", 0, shuttleHours * labMult]]
-        : []),
-      ...(stretchHours > 0
-        ? [["S&F", `Stretch & Flex (${baseDays.toFixed(1)} project days × 0.5 hrs)`, "", 1, 0, stretchHours * labMult, "", 0, stretchHours * labMult]]
-        : []),
-      ...(compositeHours > 0
-        ? [["CLEANUP", `Composite Cleanup (${baseWeeks.toFixed(1)} wks × 8 hrs)`, "", 1, 0, compositeHours * labMult, "", 0, compositeHours * labMult]]
-        : []),
-      ...(liftHours > 0
-        ? [["LIFT", `Lift Spotters (65% × ${baseHours.toFixed(1)} hrs ÷ ${guys} guys)`, "", 1, 0, liftHours * labMult, "", 0, liftHours * labMult]]
-        : []),
-      // Water & Ice (not subject to material contingency — it's a direct cost)
-      ...((tech.waterAndIce ?? 0) > 0
-        ? [["W&I", "Water & Ice (Tech Level)", "", 1, tech.waterAndIce, 0, "", tech.waterAndIce, 0]]
-        : []),
-      // Additional Materials (not subject to material contingency)
-      ...(tech.additionalMaterials ?? [])
-        .filter((m) => (m.value || 0) > 0)
-        .map((m) => ["ADDL-MAT", m.name || "Additional Material", "", 1, m.value, 0, "", m.value, 0]),
+      // NC-only adder rows — excluded in NTI mode
+      ...(!ntiMode ? [
+        // Cores addition
+        ...(coresAddedHours > 0
+          ? [[
+              "PCC",
+              `Cores (${projectSpecificDetails!.cores.count} cores × ${pccHoursPerUnit} hrs/core)`,
+              "",
+              projectSpecificDetails!.cores.count,
+              0,
+              pccHoursPerUnit * labMult,
+              "",
+              0,
+              coresAddedHours * labMult,
+            ]]
+          : []),
+        // Badging/Safety
+        ...(badgingAddedHours > 0
+          ? [[
+              "BADGE",
+              `Badging / Safety (${numberOfGuys} techs × 4 hrs)`,
+              "",
+              numberOfGuys,
+              0,
+              4 * labMult,
+              "",
+              0,
+              badgingAddedHours * labMult,
+            ]]
+          : []),
+        // Material Handling
+        ...(materialHandlingHours > 0
+          ? [[
+              "MH",
+              "Material Handling (Tech Level)",
+              "",
+              1,
+              0,
+              materialHandlingHours * labMult,
+              "",
+              0,
+              materialHandlingHours * labMult,
+            ]]
+          : []),
+        // Commissioning Support
+        ...(commissioningHours > 0
+          ? [[
+              "COMM",
+              "Commissioning Support (Tech Level)",
+              "",
+              1,
+              0,
+              commissioningHours * labMult,
+              "",
+              0,
+              commissioningHours * labMult,
+            ]]
+          : []),
+        // Additional Labor items
+        ...additionalLaborItemsData.map((item) => [
+          "ADDL",
+          item.description || "Additional Labor",
+          "",
+          1,
+          0,
+          item.hours * labMult,
+          "",
+          0,
+          item.hours * labMult,
+        ]),
+        // Extras
+        ...(shuttleHours > 0
+          ? [["SHUTTLE", `Shuttle Services (${baseDays.toFixed(1)} project days × 1 hr)`, "", 1, 0, shuttleHours * labMult, "", 0, shuttleHours * labMult]]
+          : []),
+        ...(stretchHours > 0
+          ? [["S&F", `Stretch & Flex (${baseDays.toFixed(1)} project days × 0.5 hrs)`, "", 1, 0, stretchHours * labMult, "", 0, stretchHours * labMult]]
+          : []),
+        ...(compositeHours > 0
+          ? [["CLEANUP", `Composite Cleanup (${baseWeeks.toFixed(1)} wks × 8 hrs)`, "", 1, 0, compositeHours * labMult, "", 0, compositeHours * labMult]]
+          : []),
+        ...(liftHours > 0
+          ? [["LIFT", `Lift Spotters (65% × ${baseHours.toFixed(1)} hrs ÷ ${guys} guys)`, "", 1, 0, liftHours * labMult, "", 0, liftHours * labMult]]
+          : []),
+        // Water & Ice
+        ...((tech.waterAndIce ?? 0) > 0
+          ? [["W&I", "Water & Ice (Tech Level)", "", 1, tech.waterAndIce, 0, "", tech.waterAndIce, 0]]
+          : []),
+        // Additional Materials
+        ...(tech.additionalMaterials ?? [])
+          .filter((m) => (m.value || 0) > 0)
+          .map((m) => ["ADDL-MAT", m.name || "Additional Material", "", 1, m.value, 0, "", m.value, 0]),
+      ] : []),
     ];
 
     const ws = XLSX.utils.aoa_to_sheet([header, ...dataRows]);
