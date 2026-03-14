@@ -18,6 +18,7 @@ import { MaterialsSummary } from "@/components/project/materials-summary";
 import { PerTechDetailsCard } from "@/components/project/per-tech-details-card";
 import { AIEstimateDialog } from "@/components/project/ai-estimate-dialog";
 import { BomImportDialog } from "@/components/project/bom-import-dialog";
+import { NTIReportPreview } from "@/components/project/nti-report-preview";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -963,6 +964,12 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
                     />
                   </div>
                   <InputValuesTable tech={tech} coloSites={project.coloSites} onChange={updateTechnology} ntiMode />
+                  <NTIReportPreview
+                    tech={tech}
+                    coloSites={project.coloSites}
+                    materialContingency={project.ntiMaterialContingency ?? 0}
+                    laborContingency={project.ntiLaborContingency ?? 0}
+                  />
                 </TabsContent>
               );
             })}
