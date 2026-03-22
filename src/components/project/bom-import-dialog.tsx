@@ -328,15 +328,14 @@ export function BomImportDialog({
     const totalEquipmentWithExtras = ntiMode
       ? totalEquipment * matMult
       : totalEquipment * matMult + waterAndIceRaw + addlMaterialsRaw;
-    // NTI: only raw BOM hours (no NC extras like cores, badging, MH, etc.)
-    // NC:  full totalHours including all extras
-    const totalHoursWithContingency = ntiMode
-      ? bomHours * labMult
-      : totalHours * labMult;
+    // NTI: raw BOM hours × labor contingency
+    // NC:  raw BOM hours only — extras are added dynamically at quote-calculation time
+    //      (so changes to shuttle/stretch/lift/etc. take effect without re-importing)
+    const hoursToStore = ntiMode ? bomHours * labMult : bomHours;
 
     for (const d of distribution) {
       const pct = d.percentage / 100;
-      installLaborHours[d.coloId] = Math.round(totalHoursWithContingency * pct * 100) / 100;
+      installLaborHours[d.coloId] = Math.round(hoursToStore * pct * 100) / 100;
       equipmentCost[d.coloId] = Math.round(totalEquipmentWithExtras * pct * 100) / 100;
     }
 
@@ -384,7 +383,7 @@ export function BomImportDialog({
 
     onApply({ ...tech, installLaborHours, equipmentCost, laborHoursBreakdown, equipmentCostBreakdown, bomReportRows });
     toast.success(
-      `BOM applied — ${totalHoursWithContingency.toFixed(1)} hrs · ${formatCurrency(totalEquipmentWithExtras)} equipment`
+      `BOM applied — ${hoursToStore.toFixed(1)} BOM hrs · ${formatCurrency(totalEquipmentWithExtras)} equipment`
     );
     setOpen(false);
     // Do not reset — keep analysis alive so Download Report stays available.

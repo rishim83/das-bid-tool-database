@@ -9,6 +9,7 @@ import type {
   QuoteLine,
   TechnologyQuote,
   Schedule,
+  ProjectSpecificDetails,
 } from "@/types";
 
 // ─── PM Travel Calculation ──────────────────────────────────────
@@ -166,6 +167,57 @@ function calcInstallTravel(
 ): number {
   const hours = tech.installLaborHours[coloId] || 0;
   return hours * params.travelPerDay;
+}
+
+// ─── Effective labor hours (NC dynamic extras) ──────────────────
+
+/**
+ * Returns effective per-colo labor hours for a NC tech by dynamically
+ * layering all extras (shuttle, stretch, lift, badging, MH, commissioning,
+ * additional labor) on top of the raw BOM hours stored in installLaborHours.
+ * Cores hours come from the stored laborHoursBreakdown (requires DB at import time).
+ * Techs with no BOM applied are returned unchanged.
+ */
+export function computeEffectiveLaborHoursPerColo(
+  tech: TechnologyConfig,
+  psd: ProjectSpecificDetails | undefined,
+  numberOfGuys: number,
+  hoursPerDay: number,
+): Record<string, number> {
+  const rawHoursPerColo = tech.installLaborHours;
+  const totalBomHours = Object.values(rawHoursPerColo).reduce((s, h) => s + (h || 0), 0);
+
+  if (totalBomHours === 0) return rawHoursPerColo;
+
+  // Cores hours need pccHoursPerUnit from DB — use value stored at last import
+  const coresHours = tech.laborHoursBreakdown?.cores ?? 0;
+  // Badging: 4 hrs per tech (no DB lookup needed)
+  const badgingHours = !!(psd?.badgingSafety) ? Math.max(numberOfGuys, 1) * 4 : 0;
+  // Per-tech fixed extras (live from current tech state)
+  const materialHandlingHours = tech.materialHandlingHours ?? 0;
+  const commissioningHours = tech.commissioningSupport ?? 0;
+  const additionalLaborHours = (tech.additionalLaborItems ?? []).reduce((s, i) => s + (i.hours || 0), 0);
+
+  const baseHours = totalBomHours + coresHours + badgingHours + materialHandlingHours + commissioningHours + additionalLaborHours;
+
+  // Percentage-based extras — recomputed from CURRENT settings
+  const hpd = hoursPerDay || 8;
+  const baseDays = baseHours > 0 ? baseHours / hpd : 0;
+  const guys = Math.max(numberOfGuys, 1);
+  const shuttleHours    = !!(psd?.extras?.shuttleServices) && baseHours > 0 ? baseDays : 0;
+  const stretchHours    = !!(psd?.extras?.stretchAndFlex)  && baseHours > 0 ? baseDays * 0.5 : 0;
+  const compositeHours  = Number(psd?.extras?.compositeCleanup ?? 0);
+  const liftHours       = !!(psd?.extras?.liftSpotters)    && baseHours > 0 ? (0.65 * baseHours) / guys : 0;
+
+  const totalEffectiveHours = baseHours + shuttleHours + stretchHours + compositeHours + liftHours;
+
+  // Distribute proportionally using raw BOM hours as the weight per colo
+  const result: Record<string, number> = {};
+  for (const [coloId, rawHours] of Object.entries(rawHoursPerColo)) {
+    const pct = (rawHours || 0) / totalBomHours;
+    result[coloId] = Math.round(totalEffectiveHours * pct * 100) / 100;
+  }
+  return result;
 }
 
 // ─── Full Quote Calculation ─────────────────────────────────────

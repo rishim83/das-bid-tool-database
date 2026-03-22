@@ -20,6 +20,7 @@ import {
   calculatePMTravel,
   calculateSchedule,
   calculateTechnologyQuote,
+  computeEffectiveLaborHoursPerColo,
 } from "@/lib/calculations";
 import { saveProject } from "@/lib/storage";
 
@@ -49,10 +50,24 @@ export function useProject(initialProject: Project) {
     [project.pmTravel]
   );
 
+  const psd = project.projectSpecificDetails;
+  const hpd = project.inputParameters.hoursPerDay ?? 8;
+  const numGuys = project.schedule.numberOfGuys;
+
+  // Effective techs: installLaborHours replaced with dynamically-computed totals
+  // (raw BOM hours + current extras from project settings). NC only — NTI is unchanged.
+  const effectiveTechs = useMemo(() => {
+    return project.technologies.map((tech) => {
+      if (!tech.enabled) return tech;
+      const effectiveHours = computeEffectiveLaborHoursPerColo(tech, psd, numGuys, hpd);
+      return { ...tech, installLaborHours: effectiveHours };
+    });
+  }, [project.technologies, psd, numGuys, hpd]);
+
   // Calculate schedule
   const scheduleCalculated = useMemo(
-    () => calculateSchedule(project.technologies, project.schedule.numberOfGuys),
-    [project.technologies, project.schedule.numberOfGuys]
+    () => calculateSchedule(effectiveTechs, numGuys),
+    [effectiveTechs, numGuys]
   );
 
   // Merge calculated schedule into schedule state
@@ -64,14 +79,14 @@ export function useProject(initialProject: Project) {
     [project.schedule, scheduleCalculated]
   );
 
-  // Total install labor hours across all enabled techs — matches what LaborSummary shows
+  // Total install labor hours across all enabled techs — uses effective hours
   const totalAllLaborHours = useMemo(() => {
-    return project.technologies
+    return effectiveTechs
       .filter((t) => t.enabled)
       .reduce((sum, tech) => {
         return sum + Object.values(tech.installLaborHours).reduce((s, h) => s + (h || 0), 0);
       }, 0);
-  }, [project.technologies]);
+  }, [effectiveTechs]);
 
   // Calculate install travel (null when travelPercent = 0 → use old travelPerDay formula)
   const installTravelCalc: InstallTravelCalculated | null = useMemo(() => {
@@ -80,17 +95,17 @@ export function useProject(initialProject: Project) {
     return calculateInstallTravel(
       config,
       totalAllLaborHours,
-      project.inputParameters.hoursPerDay ?? 8,
-      project.schedule.numberOfGuys,
+      hpd,
+      numGuys,
       project.inputParameters.travelIndirectMarkup ?? 1.23,
       project.inputParameters.buyHourlyRate ?? 55
     );
-  }, [project.installTravel, totalAllLaborHours, project.inputParameters, project.schedule.numberOfGuys]);
+  }, [project.installTravel, totalAllLaborHours, project.inputParameters, numGuys, hpd]);
 
   // Calculate quotes for all technologies
   const quotes: TechnologyQuote[] = useMemo(
     () =>
-      project.technologies
+      effectiveTechs
         .filter((t) => t.enabled)
         .map((tech) => {
           // When install travel is configured, distribute the tech's share of the total
@@ -105,12 +120,12 @@ export function useProject(initialProject: Project) {
             project.coloSites,
             project.inputParameters,
             pmTravelCalculated.totalPerTrip,
-            project.schedule.numberOfGuys,
+            numGuys,
             0,
             installTravelOverride
           );
         }),
-    [project.technologies, project.coloSites, project.inputParameters, pmTravelCalculated, project.schedule.numberOfGuys, installTravelCalc, totalAllLaborHours]
+    [effectiveTechs, project.coloSites, project.inputParameters, pmTravelCalculated, numGuys, installTravelCalc, totalAllLaborHours]
   );
 
   // Update functions
