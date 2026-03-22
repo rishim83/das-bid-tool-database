@@ -52,6 +52,7 @@ interface Props {
   materialContingency?: number;  // percentage, e.g. 5 = 5%
   laborContingency?: number;     // percentage, e.g. 5 = 5%
   ntiMode?: boolean;
+  ntiLiftAdder?: boolean;
 }
 
 export function BomImportDialog({
@@ -65,6 +66,7 @@ export function BomImportDialog({
   materialContingency = 0,
   laborContingency = 0,
   ntiMode = false,
+  ntiLiftAdder = false,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -174,7 +176,8 @@ export function BomImportDialog({
         );
       }
 
-      const result = analyzeBOM(bomItems, db, tech.rentalEquipment?.lift.includeLiftAdder ?? false, projectSpecificDetails?.jHooks ?? true);
+      const includeLift = ntiMode ? ntiLiftAdder : (tech.rentalEquipment?.lift.includeLiftAdder ?? false);
+      const result = analyzeBOM(bomItems, db, includeLift, projectSpecificDetails?.jHooks ?? true);
       setAnalysis(result);
       setUnmatched(result.unmatched.map((u) => ({ ...u })));
       // Default: 100% to first COLO

@@ -902,7 +902,7 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
           </div>
 
           {/* NTI Contingency Inputs */}
-          <div className="border border-border/60 rounded-lg bg-card px-4 py-3 flex items-center gap-6">
+          <div className="border border-border/60 rounded-lg bg-card px-4 py-3 flex items-center gap-6 flex-wrap">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Contingency</span>
             <div className="flex items-center gap-2">
               <label className="text-xs text-muted-foreground whitespace-nowrap">Material</label>
@@ -931,6 +931,18 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
                 />
                 <span className="text-xs text-muted-foreground">%</span>
               </div>
+            </div>
+            <div className="flex items-center gap-2.5 border-l border-border/30 pl-6">
+              <input
+                id="nti-lift-adder-cb"
+                type="checkbox"
+                checked={!!project.ntiLiftAdder}
+                onChange={(e) => updateProjectMeta({ ntiLiftAdder: e.target.checked })}
+                className="h-3.5 w-3.5 rounded border-border/60 accent-primary cursor-pointer"
+              />
+              <label htmlFor="nti-lift-adder-cb" className="text-xs text-muted-foreground cursor-pointer select-none whitespace-nowrap">
+                Lift Adder
+              </label>
             </div>
           </div>
 
@@ -961,6 +973,7 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
                       materialContingency={project.ntiMaterialContingency ?? 0}
                       laborContingency={project.ntiLaborContingency ?? 0}
                       ntiMode
+                      ntiLiftAdder={!!project.ntiLiftAdder}
                     />
                   </div>
                   <InputValuesTable tech={tech} coloSites={project.coloSites} onChange={updateTechnology} ntiMode />

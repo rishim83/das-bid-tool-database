@@ -256,6 +256,7 @@ export interface Project {
   bidType?: BidType;
   ntiMaterialContingency?: number;  // percentage, e.g. 5 = 5%
   ntiLaborContingency?: number;     // percentage, e.g. 5 = 5%
+  ntiLiftAdder?: boolean;
   inputParameters: InputParameters;
   schedule: Schedule;
   pmTravel: PMTravelEstimate;
