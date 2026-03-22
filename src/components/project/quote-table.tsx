@@ -36,6 +36,9 @@ interface Props {
   subContractorTotal?: number;
   taxPercent?: number;
   installTravelActive?: boolean;
+  laborSafety?: number;
+  materialSafety?: number;
+  equipMarkUp?: number;
 }
 
 function FormulaCell({
@@ -67,6 +70,9 @@ export function QuoteTable({
   subContractorTotal = 0,
   taxPercent = 0,
   installTravelActive = false,
+  laborSafety = 1,
+  materialSafety = 1,
+  equipMarkUp = 1,
 }: Props) {
   const tableLabel = TECHNOLOGY_LABELS[quote.type];
   const dotColor = TECHNOLOGY_DOT[quote.type];
@@ -125,13 +131,28 @@ export function QuoteTable({
                 const subRows: SubRowDef[] = [];
 
                 if (isInstall) {
-                  // Install Labor (line 2 base)
-                  subRows.push({
-                    label: "Install Labor",
-                    formula: "Labor Hours × Hourly Rate × Labor Safety",
-                    getValue: (coloId) => line.values[coloId] || 0,
-                    total: line.totalPrice,
-                  });
+                  if (laborSafety !== 1) {
+                    // Split into base cost and contingency adder
+                    subRows.push({
+                      label: "Labor Base",
+                      formula: "Labor Hours × Hourly Rate",
+                      getValue: (coloId) => (line.values[coloId] || 0) / laborSafety,
+                      total: line.totalPrice / laborSafety,
+                    });
+                    subRows.push({
+                      label: `Labor Contingency (×${laborSafety.toFixed(2)})`,
+                      formula: `Labor Base × (Safety Factor − 1) = ×${(laborSafety - 1).toFixed(2)} adder`,
+                      getValue: (coloId) => (line.values[coloId] || 0) - (line.values[coloId] || 0) / laborSafety,
+                      total: line.totalPrice - line.totalPrice / laborSafety,
+                    });
+                  } else {
+                    subRows.push({
+                      label: "Install Labor",
+                      formula: "Labor Hours × Hourly Rate × Labor Safety",
+                      getValue: (coloId) => line.values[coloId] || 0,
+                      total: line.totalPrice,
+                    });
+                  }
                   // Install Travel (line 6 folded in)
                   if (installTravelLine) {
                     subRows.push({
@@ -168,19 +189,65 @@ export function QuoteTable({
                 }
 
                 const equipTaxTotal = taxPercent > 0 ? line.totalPrice * (taxPercent / 100) : 0;
-                if (isEquipment && equipTaxTotal > 0) {
-                  subRows.push({
-                    label: "Equipment",
-                    formula: "Equipment Cost × Material Contingency × Equipment Mark Up",
-                    getValue: (coloId) => line.values[coloId] || 0,
-                    total: line.totalPrice,
-                  });
-                  subRows.push({
-                    label: "Tax",
-                    formula: `${taxPercent}% × Equipment Cost`,
-                    getValue: (coloId) => (line.values[coloId] || 0) * (taxPercent / 100),
-                    total: equipTaxTotal,
-                  });
+                if (isEquipment) {
+                  const hasMaterialContingency = materialSafety !== 1 || equipMarkUp !== 1;
+                  if (hasMaterialContingency) {
+                    // Raw BOM cost (back-calculated)
+                    const rawBase = materialSafety * equipMarkUp !== 0
+                      ? line.totalPrice / materialSafety / equipMarkUp
+                      : line.totalPrice;
+                    subRows.push({
+                      label: "Equipment Base",
+                      formula: "Raw BOM Equipment Cost",
+                      getValue: (coloId) => materialSafety * equipMarkUp !== 0
+                        ? (line.values[coloId] || 0) / materialSafety / equipMarkUp
+                        : line.values[coloId] || 0,
+                      total: rawBase,
+                    });
+                    if (materialSafety !== 1) {
+                      const safetyAdder = rawBase * (materialSafety - 1) * equipMarkUp;
+                      subRows.push({
+                        label: `Material Safety (×${materialSafety.toFixed(2)})`,
+                        formula: `Base × (Material Safety − 1) × Mark Up`,
+                        getValue: (coloId) => {
+                          const base = materialSafety * equipMarkUp !== 0
+                            ? (line.values[coloId] || 0) / materialSafety / equipMarkUp
+                            : line.values[coloId] || 0;
+                          return base * (materialSafety - 1) * equipMarkUp;
+                        },
+                        total: safetyAdder,
+                      });
+                    }
+                    if (equipMarkUp !== 1) {
+                      const markupAdder = rawBase * materialSafety * (equipMarkUp - 1);
+                      subRows.push({
+                        label: `Mark Up (×${equipMarkUp.toFixed(2)})`,
+                        formula: `Base × Material Safety × (Mark Up − 1)`,
+                        getValue: (coloId) => {
+                          const base = materialSafety * equipMarkUp !== 0
+                            ? (line.values[coloId] || 0) / materialSafety / equipMarkUp
+                            : line.values[coloId] || 0;
+                          return base * materialSafety * (equipMarkUp - 1);
+                        },
+                        total: markupAdder,
+                      });
+                    }
+                  } else {
+                    subRows.push({
+                      label: "Equipment",
+                      formula: "Equipment Cost × Material Safety × Mark Up",
+                      getValue: (coloId) => line.values[coloId] || 0,
+                      total: line.totalPrice,
+                    });
+                  }
+                  if (equipTaxTotal > 0) {
+                    subRows.push({
+                      label: "Tax",
+                      formula: `${taxPercent}% × Equipment Sell`,
+                      getValue: (coloId) => (line.values[coloId] || 0) * (taxPercent / 100),
+                      total: equipTaxTotal,
+                    });
+                  }
                 }
 
                 if (isPM) {
@@ -211,7 +278,7 @@ export function QuoteTable({
                   }
                 }
 
-                // Install and PM always have 2+ sub-rows → always expandable
+                // Any line with 2+ sub-rows is expandable
                 const hasSubRows = subRows.length >= 2;
 
                 // ── Main row display values (sum of all components) ──
@@ -247,8 +314,10 @@ export function QuoteTable({
                   if (rentalMarkupCost > 0) parts.push("Rental Equipment");
                   if (subContractorTotal > 0) parts.push("Subcontractors");
                   mainFormula = parts.join(" + ");
-                } else if (isEquipment && equipTaxTotal > 0) {
-                  mainFormula = `Equipment Cost + Tax (${taxPercent}%)`;
+                } else if (isEquipment) {
+                  const parts = ["Equipment Cost × Material Safety × Mark Up"];
+                  if (equipTaxTotal > 0) parts.push(`Tax (${taxPercent}%)`);
+                  mainFormula = parts.join(" + ");
                 } else if (isPM) {
                   const parts = ["PM", "PM Travel"];
                   if (adminPercent > 0) parts.push(`Admin (${adminPercent}%)`);

@@ -1065,6 +1065,9 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
                     subContractorTotal={techSubMarkup}
                     taxPercent={taxPercent}
                     installTravelActive={installTravelCalc !== null}
+                    laborSafety={project.inputParameters.laborSafety ?? 1}
+                    materialSafety={project.inputParameters.materialSafety ?? 1}
+                    equipMarkUp={project.inputParameters.markUp ?? 1}
                   />}
                 </TabsContent>
               );
