@@ -93,12 +93,14 @@ export default function HomePage() {
 
   const handleDuplicate = async (p: Project, e: React.MouseEvent) => {
     e.stopPropagation();
-    const dup = createNewProject(`${p.name} (Copy)`, p.client);
-    dup.inputParameters = { ...p.inputParameters };
-    dup.schedule = { ...p.schedule };
-    dup.pmTravel = { ...p.pmTravel };
-    dup.coloSites = p.coloSites.map((s) => ({ ...s }));
-    dup.technologies = JSON.parse(JSON.stringify(p.technologies));
+    const now = new Date().toISOString();
+    const dup: Project = {
+      ...JSON.parse(JSON.stringify(p)),
+      id: crypto.randomUUID(),
+      name: `${p.name} (Copy)`,
+      createdAt: now,
+      updatedAt: now,
+    };
     await saveProject(dup);
     setProjects(await loadProjects());
   };
