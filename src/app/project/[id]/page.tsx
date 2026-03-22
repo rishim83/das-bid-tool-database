@@ -1019,6 +1019,7 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
             daysPerWeek={project.inputParameters.daysPerWeek ?? 5}
             numberOfGuys={project.schedule.numberOfGuys}
             projectSpecificDetails={psd}
+            laborSafety={project.inputParameters.laborSafety ?? 1}
           />
           <MaterialsSummary technologies={project.technologies} />
 
@@ -1065,7 +1066,6 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
                     subContractorTotal={techSubMarkup}
                     taxPercent={taxPercent}
                     installTravelActive={installTravelCalc !== null}
-                    laborSafety={project.inputParameters.laborSafety ?? 1}
                     materialSafety={project.inputParameters.materialSafety ?? 1}
                     equipMarkUp={project.inputParameters.markUp ?? 1}
                   />}

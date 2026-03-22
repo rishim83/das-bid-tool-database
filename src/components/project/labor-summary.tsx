@@ -14,6 +14,7 @@ interface Props {
   daysPerWeek: number;
   numberOfGuys: number;
   projectSpecificDetails?: ProjectSpecificDetails;
+  laborSafety?: number;
 }
 
 function fmt(n: number, decimals = 1): string {
@@ -24,7 +25,7 @@ function fmt(n: number, decimals = 1): string {
   });
 }
 
-export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfGuys, projectSpecificDetails }: Props) {
+export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfGuys, projectSpecificDetails, laborSafety = 1 }: Props) {
   const [showBreakdown, setShowBreakdown] = useState(false);
 
   const hpd = hoursPerDay > 0 ? hoursPerDay : 8;
@@ -34,12 +35,15 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
 
   const scopeData = SCOPE_TYPES.map((type) => {
     const tech = technologies.find((t) => t.type === type);
-    if (!tech) return { type, totalHours: 0, totalDays: 0, totalWeeks: 0, breakdown: null as null, dynBreakdown: null as null };
+    if (!tech) return { type, totalHours: 0, contingencyHours: 0, billedHours: 0, totalDays: 0, totalWeeks: 0, breakdown: null as null, dynBreakdown: null as null };
 
     // Use effective labor hours (BOM + dynamic extras) for the total
     const effectiveHours = computeEffectiveLaborHoursPerColo(tech, psd, guys, hpd);
     const totalHours = Object.values(effectiveHours).reduce((sum, h) => sum + (h || 0), 0);
-    const totalDays = totalHours / hpd / guys;
+    // Apply labor safety factor to get the billed-equivalent hours
+    const contingencyHours = totalHours * (laborSafety - 1);
+    const billedHours = totalHours * laborSafety;
+    const totalDays = billedHours / hpd / guys;
     const totalWeeks = totalDays / dpw;
 
     // Build dynamic breakdown from current settings (same logic as computeEffectiveLaborHoursPerColo)
@@ -71,10 +75,10 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
       liftSpotters: liftHours,
     };
 
-    return { type, totalHours, totalDays, totalWeeks, breakdown: bd, dynBreakdown };
+    return { type, totalHours, contingencyHours, billedHours, totalDays, totalWeeks, breakdown: bd, dynBreakdown };
   });
 
-  const anyHours = scopeData.some((s) => s.totalHours > 0);
+  const anyHours = scopeData.some((s) => (s.billedHours ?? 0) > 0);
   if (!anyHours) return null;
 
   const hasAnyBreakdown = scopeData.some((s) => s.dynBreakdown !== null && s.dynBreakdown.bom > 0);
@@ -107,6 +111,14 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
     { kind: "row", label: "+ Stretch & Flex", getValue: (s) => s.dynBreakdown?.stretchAndFlex ?? 0 },
     { kind: "row", label: "+ Composite Cleanup", getValue: (s) => s.dynBreakdown?.compositeCleanup ?? 0 },
     { kind: "row", label: "+ Lift Spotters", getValue: (s) => s.dynBreakdown?.liftSpotters ?? 0 },
+    ...(laborSafety !== 1 ? [
+      { kind: "divider" as const },
+      {
+        kind: "row" as const,
+        label: `+ Labor Contingency (×${laborSafety.toFixed(2)})`,
+        getValue: (s: typeof scopeData[0]) => s.contingencyHours ?? 0,
+      },
+    ] : []),
   ];
 
   // Only show breakdown rows that have at least one non-zero value (excluding dividers)
@@ -163,9 +175,9 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
                   Total Hours
                 </div>
               </td>
-              {scopeData.map(({ type, totalHours }) => (
+              {scopeData.map(({ type, billedHours }) => (
                 <td key={type} className="px-4 py-2 text-right font-mono text-xs tabular-nums text-muted-foreground">
-                  {fmt(totalHours, 0)}
+                  {fmt(billedHours ?? 0, 0)}
                 </td>
               ))}
             </tr>

@@ -282,6 +282,10 @@ export function BomImportDialog({
   );
   const excludeMaterials = !ntiMode && !!(projectSpecificDetails?.extras?.excludeMaterials);
   const totalEquipment = excludeMaterials ? 0 : (analysis?.totalEquipmentCost ?? 0) + extraEquip + overrideEquipTotal;
+  // What will actually be stored in equipmentCost (matches handleApply logic):
+  // NTI: BOM × material contingency; NC: raw BOM only (extras applied dynamically)
+  const matMult = 1 + materialContingency / 100;
+  const equipCostPreview = ntiMode ? totalEquipment * matMult : totalEquipment;
 
   // ── Labor hour breakdown ──────────────────────────────────────
   // BOM hours = matched + overrides + resolved unmatched
@@ -318,10 +322,9 @@ export function BomImportDialog({
     const installLaborHours: Record<string, number> = { ...tech.installLaborHours };
     const equipmentCost: Record<string, number> = { ...tech.equipmentCost };
 
-    // Include Water & Ice and Additional Materials in the equipment cost total
     const waterAndIceRaw = tech.waterAndIce ?? 0;
     const addlMaterialsRaw = (tech.additionalMaterials ?? []).reduce((s, m) => s + (m.value || 0), 0);
-    const matMult = 1 + materialContingency / 100;
+    // matMult defined at component level; labMult only needed here
     const labMult = 1 + laborContingency / 100;
     // NTI: BOM equipment × material contingency
     // NC:  raw BOM equipment only — waterAndIce and additionalMaterials are added
@@ -332,10 +335,7 @@ export function BomImportDialog({
     // NTI: raw BOM hours × labor contingency
     // NC:  raw BOM hours only — extras are added dynamically at quote-calculation time
     const hoursToStore = ntiMode ? bomHours * labMult : bomHours;
-    // Keep totalEquipmentWithExtras for the toast message and download report
-    const totalEquipmentWithExtras = ntiMode
-      ? totalEquipment * matMult
-      : totalEquipment * matMult + waterAndIceRaw + addlMaterialsRaw;
+    // Use equipCostToStore for the toast so the user sees exactly what was stored in Input Values
 
     for (const d of distribution) {
       const pct = d.percentage / 100;
@@ -387,7 +387,7 @@ export function BomImportDialog({
 
     onApply({ ...tech, installLaborHours, equipmentCost, laborHoursBreakdown, equipmentCostBreakdown, bomReportRows });
     toast.success(
-      `BOM applied — ${hoursToStore.toFixed(1)} BOM hrs · ${formatCurrency(totalEquipmentWithExtras)} equipment`
+      `BOM applied — ${hoursToStore.toFixed(1)} BOM hrs · ${formatCurrency(equipCostToStore)} equipment`
     );
     setOpen(false);
     // Do not reset — keep analysis alive so Download Report stays available.
@@ -399,7 +399,7 @@ export function BomImportDialog({
     // Columns: A=Part#, B=Manufacturer, C=(empty), D=QTY,
     //          E=Material Unit Cost (w/ contingency), F=Labor Unit Hours (w/ contingency),
     //          G=RF Services ($), H=Material Total Cost, I=Labor Total Hours
-    const matMult = 1 + materialContingency / 100;
+    // matMult defined at component level
     const labMult = 1 + laborContingency / 100;
 
     const header = [
@@ -745,12 +745,11 @@ export function BomImportDialog({
                     <span className="text-muted-foreground">
                       Equipment:{" "}
                       <span className="font-mono font-medium text-foreground">
-                        {formatCurrency(
-                          totalEquipment +
-                          (tech.waterAndIce ?? 0) +
-                          (tech.additionalMaterials ?? []).reduce((s, m) => s + (m.value || 0), 0)
-                        )}
+                        {formatCurrency(equipCostPreview)}
                       </span>
+                      {!ntiMode && ((tech.waterAndIce ?? 0) > 0 || (tech.additionalMaterials ?? []).some((m) => (m.value || 0) > 0)) && (
+                        <span className="ml-1 text-muted-foreground/60">(+ extras dynamic)</span>
+                      )}
                     </span>
                   </div>
                 </div>
@@ -1014,7 +1013,7 @@ export function BomImportDialog({
                     {distribution.map((d) => {
                       const site = coloSites.find((c) => c.id === d.coloId);
                       const labHrs = totalHours * (d.percentage / 100);
-                      const equip = totalEquipment * (d.percentage / 100);
+                      const equip = equipCostPreview * (d.percentage / 100);
                       return (
                         <div key={d.coloId} className="flex items-center gap-3">
                           <span className="text-xs text-muted-foreground w-32 shrink-0">

@@ -36,7 +36,6 @@ interface Props {
   subContractorTotal?: number;
   taxPercent?: number;
   installTravelActive?: boolean;
-  laborSafety?: number;
   materialSafety?: number;
   equipMarkUp?: number;
 }
@@ -70,7 +69,6 @@ export function QuoteTable({
   subContractorTotal = 0,
   taxPercent = 0,
   installTravelActive = false,
-  laborSafety = 1,
   materialSafety = 1,
   equipMarkUp = 1,
 }: Props) {
@@ -131,28 +129,12 @@ export function QuoteTable({
                 const subRows: SubRowDef[] = [];
 
                 if (isInstall) {
-                  if (laborSafety !== 1) {
-                    // Split into base cost and contingency adder
-                    subRows.push({
-                      label: "Labor Base",
-                      formula: "Labor Hours × Hourly Rate",
-                      getValue: (coloId) => (line.values[coloId] || 0) / laborSafety,
-                      total: line.totalPrice / laborSafety,
-                    });
-                    subRows.push({
-                      label: `Labor Contingency (×${laborSafety.toFixed(2)})`,
-                      formula: `Labor Base × (Safety Factor − 1) = ×${(laborSafety - 1).toFixed(2)} adder`,
-                      getValue: (coloId) => (line.values[coloId] || 0) - (line.values[coloId] || 0) / laborSafety,
-                      total: line.totalPrice - line.totalPrice / laborSafety,
-                    });
-                  } else {
-                    subRows.push({
-                      label: "Install Labor",
-                      formula: "Labor Hours × Hourly Rate × Labor Safety",
-                      getValue: (coloId) => line.values[coloId] || 0,
-                      total: line.totalPrice,
-                    });
-                  }
+                  subRows.push({
+                    label: "Install Labor",
+                    formula: "Labor Hours × Hourly Rate × Labor Safety",
+                    getValue: (coloId) => line.values[coloId] || 0,
+                    total: line.totalPrice,
+                  });
                   // Install Travel (line 6 folded in)
                   if (installTravelLine) {
                     subRows.push({
