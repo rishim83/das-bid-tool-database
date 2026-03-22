@@ -106,7 +106,7 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
 
   const getTechRentalRaw = (tech: TechnologyConfig) => {
     const r = tech.rentalEquipment ?? DEFAULT_RENTAL_EQUIPMENT;
-    return r.lift.months * r.lift.costPerMonth +
+    return (r.lift.numberOfLifts ?? 1) * r.lift.months * r.lift.costPerMonth +
       (r.additionalItems ?? []).reduce((s, i) => s + i.months * i.costPerMonth, 0);
   };
   const getTechRentalMarkup = (tech: TechnologyConfig) => {
@@ -535,7 +535,7 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
         (tech.additionalMaterials ?? []).forEach((m) => { if (m.value > 0) matItems.push([m.name || "Additional Material", m.value, m.value * ip.materialSafety * ip.markUp]); });
       }
       const rental  = tech.rentalEquipment ?? DEFAULT_RENTAL_EQUIPMENT;
-      const liftRaw = rental.lift.months * rental.lift.costPerMonth;
+      const liftRaw = (rental.lift.numberOfLifts ?? 1) * rental.lift.months * rental.lift.costPerMonth;
       if (liftRaw > 0) matItems.push(["Lift Rental", liftRaw, null]);
       (rental.additionalItems ?? []).forEach((item) => {
         const val = item.months * item.costPerMonth;

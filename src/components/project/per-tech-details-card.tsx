@@ -65,7 +65,7 @@ function TechColumn({ tech, onChange }: { tech: TechnologyConfig; onChange: (t: 
     update({ additionalMaterials: additionalMaterials.filter((m) => m.id !== id) });
 
   // Rental Equipment - Lift
-  const updateLift = (field: "months" | "costPerMonth" | "includeLiftAdder", value: number | boolean) =>
+  const updateLift = (field: "numberOfLifts" | "months" | "costPerMonth" | "includeLiftAdder", value: number | boolean) =>
     update({ rentalEquipment: { ...rental, lift: { ...rental.lift, [field]: value } } });
 
   // Rental Equipment - Additional Items
@@ -96,7 +96,7 @@ function TechColumn({ tech, onChange }: { tech: TechnologyConfig; onChange: (t: 
       },
     });
 
-  const liftTotal = rental.lift.months * rental.lift.costPerMonth;
+  const liftTotal = (rental.lift.numberOfLifts ?? 1) * rental.lift.months * rental.lift.costPerMonth;
   const addlTotal = (rental.additionalItems ?? []).reduce(
     (s, i) => s + i.months * i.costPerMonth,
     0
@@ -295,11 +295,20 @@ function TechColumn({ tech, onChange }: { tech: TechnologyConfig; onChange: (t: 
             <span className="text-xs text-muted-foreground shrink-0 w-6">Lift</span>
             <Input
               type="number"
+              step="1"
+              min={0}
+              value={rental.lift.numberOfLifts ?? 1}
+              onChange={(e) => updateLift("numberOfLifts", parseFloat(e.target.value) || 0)}
+              className="h-7 w-12 bg-input/40 border-border/50 text-right text-sm font-mono tabular-nums rounded-md"
+            />
+            <span className="text-xs text-muted-foreground shrink-0">×</span>
+            <Input
+              type="number"
               step="any"
               min={0}
               value={rental.lift.months}
               onChange={(e) => updateLift("months", parseFloat(e.target.value) || 0)}
-              className="h-7 w-14 bg-input/40 border-border/50 text-right text-sm font-mono tabular-nums rounded-md"
+              className="h-7 w-12 bg-input/40 border-border/50 text-right text-sm font-mono tabular-nums rounded-md"
             />
             <span className="text-xs text-muted-foreground shrink-0">mo @</span>
             <span className="text-xs text-muted-foreground shrink-0">$</span>

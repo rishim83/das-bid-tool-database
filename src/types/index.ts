@@ -148,6 +148,7 @@ export interface SubContractor {
 // ─── Rental Equipment ───────────────────────────────────────────
 
 export interface LiftConfig {
+  numberOfLifts: number;
   months: number;
   costPerMonth: number;
   includeLiftAdder: boolean; // if true, use column E labor hours from DB
@@ -240,7 +241,7 @@ export const DEFAULT_PROJECT_SPECIFIC_DETAILS: ProjectSpecificDetails = {
 };
 
 export const DEFAULT_RENTAL_EQUIPMENT: RentalEquipment = {
-  lift: { months: 0, costPerMonth: 0, includeLiftAdder: false },
+  lift: { numberOfLifts: 1, months: 0, costPerMonth: 0, includeLiftAdder: false },
   additionalItems: [],
 };
 

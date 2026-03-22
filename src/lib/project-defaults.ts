@@ -22,7 +22,7 @@ export function createNewProject(name: string = "New Project", client: string = 
     coloSites: DEFAULT_COLO_SITES.map((c) => ({ ...c })),
     subContractors: [],
     rentalEquipment: {
-      lift: { months: 0, costPerMonth: 0, includeLiftAdder: false },
+      lift: { numberOfLifts: 1, months: 0, costPerMonth: 0, includeLiftAdder: false },
       additionalItems: [],
     },
     projectSpecificDetails: { ...DEFAULT_PROJECT_SPECIFIC_DETAILS },
