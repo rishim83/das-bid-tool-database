@@ -1018,6 +1018,7 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
             hoursPerDay={project.inputParameters.hoursPerDay ?? 8}
             daysPerWeek={project.inputParameters.daysPerWeek ?? 5}
             numberOfGuys={project.schedule.numberOfGuys}
+            projectSpecificDetails={psd}
           />
           <MaterialsSummary technologies={project.technologies} />
 

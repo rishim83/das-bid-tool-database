@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import type { TechnologyConfig, TechnologyType } from "@/types";
+import type { TechnologyConfig, TechnologyType, ProjectSpecificDetails } from "@/types";
 import { TECHNOLOGY_LABELS, TECHNOLOGY_DOT } from "@/lib/constants";
+import { computeEffectiveLaborHoursPerColo } from "@/lib/calculations";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 const SCOPE_TYPES: TechnologyType[] = ["DAS", "PUBLIC_SAFETY", "ROIP"];
@@ -12,6 +13,7 @@ interface Props {
   hoursPerDay: number;
   daysPerWeek: number;
   numberOfGuys: number;
+  projectSpecificDetails?: ProjectSpecificDetails;
 }
 
 function fmt(n: number, decimals = 1): string {
@@ -22,33 +24,65 @@ function fmt(n: number, decimals = 1): string {
   });
 }
 
-export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfGuys }: Props) {
+export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfGuys, projectSpecificDetails }: Props) {
   const [showBreakdown, setShowBreakdown] = useState(false);
 
   const hpd = hoursPerDay > 0 ? hoursPerDay : 8;
   const dpw = daysPerWeek > 0 ? daysPerWeek : 5;
   const guys = numberOfGuys > 0 ? numberOfGuys : 1;
+  const psd = projectSpecificDetails;
 
   const scopeData = SCOPE_TYPES.map((type) => {
     const tech = technologies.find((t) => t.type === type);
-    const totalHours = tech
-      ? Object.values(tech.installLaborHours).reduce((sum, h) => sum + (h || 0), 0)
-      : 0;
+    if (!tech) return { type, totalHours: 0, totalDays: 0, totalWeeks: 0, breakdown: null as null, dynBreakdown: null as null };
+
+    // Use effective labor hours (BOM + dynamic extras) for the total
+    const effectiveHours = computeEffectiveLaborHoursPerColo(tech, psd, guys, hpd);
+    const totalHours = Object.values(effectiveHours).reduce((sum, h) => sum + (h || 0), 0);
     const totalDays = totalHours / hpd / guys;
     const totalWeeks = totalDays / dpw;
-    const breakdown = tech?.laborHoursBreakdown ?? null;
-    return { type, totalHours, totalDays, totalWeeks, breakdown };
+
+    // Build dynamic breakdown from current settings (same logic as computeEffectiveLaborHoursPerColo)
+    const rawBomHours = Object.values(tech.installLaborHours).reduce((s, h) => s + (h || 0), 0);
+    const bd = tech.laborHoursBreakdown;
+    const coresHours = bd?.cores ?? 0;
+    const badgingHours = !!(psd?.badgingSafety) ? guys * 4 : 0;
+    const materialHandlingHours = tech.materialHandlingHours ?? 0;
+    const commissioningHours = tech.commissioningSupport ?? 0;
+    const additionalLaborItems = (tech.additionalLaborItems ?? []).filter((i) => (i.hours || 0) > 0);
+    const additionalLaborHours = additionalLaborItems.reduce((s, i) => s + (i.hours || 0), 0);
+    const baseHours = rawBomHours + coresHours + badgingHours + materialHandlingHours + commissioningHours + additionalLaborHours;
+    const baseDays = baseHours > 0 ? baseHours / hpd : 0;
+    const shuttleHours   = !!(psd?.extras?.shuttleServices) && baseHours > 0 ? baseDays : 0;
+    const stretchHours   = !!(psd?.extras?.stretchAndFlex)  && baseHours > 0 ? baseDays * 0.5 : 0;
+    const compositeHours = Number(psd?.extras?.compositeCleanup ?? 0);
+    const liftHours      = !!(psd?.extras?.liftSpotters)    && baseHours > 0 ? (0.65 * baseHours) / guys : 0;
+
+    const dynBreakdown = {
+      bom: rawBomHours,
+      cores: coresHours,
+      badging: badgingHours,
+      materialHandling: materialHandlingHours,
+      commissioningSupport: commissioningHours,
+      additionalLaborItems,
+      shuttleServices: shuttleHours,
+      stretchAndFlex: stretchHours,
+      compositeCleanup: compositeHours,
+      liftSpotters: liftHours,
+    };
+
+    return { type, totalHours, totalDays, totalWeeks, breakdown: bd, dynBreakdown };
   });
 
   const anyHours = scopeData.some((s) => s.totalHours > 0);
   if (!anyHours) return null;
 
-  const hasAnyBreakdown = scopeData.some((s) => s.breakdown !== null);
+  const hasAnyBreakdown = scopeData.some((s) => s.dynBreakdown !== null && s.dynBreakdown.bom > 0);
 
   // Collect all unique additional labor item descriptions across all scopes
   const allAdditionalLabels = Array.from(
     new Set(
-      scopeData.flatMap((s) => (s.breakdown?.additionalLaborItems ?? []).map((i) => i.description))
+      scopeData.flatMap((s) => (s.dynBreakdown?.additionalLaborItems ?? []).map((i) => i.description))
     )
   );
 
@@ -58,27 +92,27 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
     | { kind: "row"; label: string; getValue: (s: typeof scopeData[0]) => number };
 
   const breakdownRows: BreakdownRow[] = [
-    { kind: "row", label: "Import BOM", getValue: (s) => s.breakdown?.bom ?? 0 },
-    { kind: "row", label: "+ Cores", getValue: (s) => s.breakdown?.cores ?? 0 },
-    { kind: "row", label: "+ Badging / Safety", getValue: (s) => s.breakdown?.badging ?? 0 },
-    { kind: "row", label: "+ Material Handling", getValue: (s) => s.breakdown?.materialHandling ?? 0 },
-    { kind: "row", label: "+ Commissioning Support", getValue: (s) => s.breakdown?.commissioningSupport ?? 0 },
+    { kind: "row", label: "Import BOM", getValue: (s) => s.dynBreakdown?.bom ?? 0 },
+    { kind: "row", label: "+ Cores", getValue: (s) => s.dynBreakdown?.cores ?? 0 },
+    { kind: "row", label: "+ Badging / Safety", getValue: (s) => s.dynBreakdown?.badging ?? 0 },
+    { kind: "row", label: "+ Material Handling", getValue: (s) => s.dynBreakdown?.materialHandling ?? 0 },
+    { kind: "row", label: "+ Commissioning Support", getValue: (s) => s.dynBreakdown?.commissioningSupport ?? 0 },
     ...allAdditionalLabels.map((desc): BreakdownRow => ({
       kind: "row",
       label: `+ ${desc || "Additional Labor"}`,
-      getValue: (s) => s.breakdown?.additionalLaborItems.find((i) => i.description === desc)?.hours ?? 0,
+      getValue: (s) => s.dynBreakdown?.additionalLaborItems.find((i) => i.description === desc)?.hours ?? 0,
     })),
     { kind: "divider" },
-    { kind: "row", label: "+ Shuttle Services", getValue: (s) => s.breakdown?.shuttleServices ?? 0 },
-    { kind: "row", label: "+ Stretch & Flex", getValue: (s) => s.breakdown?.stretchAndFlex ?? 0 },
-    { kind: "row", label: "+ Composite Cleanup", getValue: (s) => s.breakdown?.compositeCleanup ?? 0 },
-    { kind: "row", label: "+ Lift Spotters", getValue: (s) => s.breakdown?.liftSpotters ?? 0 },
+    { kind: "row", label: "+ Shuttle Services", getValue: (s) => s.dynBreakdown?.shuttleServices ?? 0 },
+    { kind: "row", label: "+ Stretch & Flex", getValue: (s) => s.dynBreakdown?.stretchAndFlex ?? 0 },
+    { kind: "row", label: "+ Composite Cleanup", getValue: (s) => s.dynBreakdown?.compositeCleanup ?? 0 },
+    { kind: "row", label: "+ Lift Spotters", getValue: (s) => s.dynBreakdown?.liftSpotters ?? 0 },
   ];
 
   // Only show breakdown rows that have at least one non-zero value (excluding dividers)
   const visibleBreakdownRows = breakdownRows.filter((row) => {
     if (row.kind === "divider") return true;
-    return scopeData.some((s) => s.breakdown && row.getValue(s) > 0);
+    return scopeData.some((s) => s.dynBreakdown && row.getValue(s) > 0);
   });
 
   // Remove divider if it's first, last, or adjacent to another divider
@@ -149,7 +183,7 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
                 <tr key={row.label} className="border-t border-border/15 bg-muted/10">
                   <td className="px-4 py-1 pl-10 text-xs text-muted-foreground/70">{row.label}</td>
                   {scopeData.map((s) => {
-                    const val = s.breakdown ? row.getValue(s) : null;
+                    const val = s.dynBreakdown ? row.getValue(s) : null;
                     return (
                       <td key={s.type} className="px-4 py-1 text-right font-mono text-xs tabular-nums text-muted-foreground/60">
                         {val === null || val === 0 ? "—" : fmt(val, 1)}
