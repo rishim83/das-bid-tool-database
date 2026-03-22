@@ -220,6 +220,45 @@ export function computeEffectiveLaborHoursPerColo(
   return result;
 }
 
+// ─── Effective equipment cost (NC dynamic extras) ───────────────
+
+/**
+ * Returns effective per-colo equipment cost for a NC tech by adding
+ * waterAndIce and additionalMaterials on top of the raw BOM equipment cost.
+ * Extras are distributed proportionally using raw BOM cost as weights.
+ * Techs with no BOM cost use equal distribution across colos.
+ */
+export function computeEffectiveEquipmentCostPerColo(
+  tech: TechnologyConfig,
+): Record<string, number> {
+  const rawCostPerColo = tech.equipmentCost;
+  const totalBomCost = Object.values(rawCostPerColo).reduce((s, v) => s + (v || 0), 0);
+
+  const waterAndIce = tech.waterAndIce ?? 0;
+  const additionalMaterials = (tech.additionalMaterials ?? []).reduce((s, m) => s + (m.value || 0), 0);
+  const totalExtras = waterAndIce + additionalMaterials;
+
+  if (totalExtras === 0) return rawCostPerColo;
+
+  const coloIds = Object.keys(rawCostPerColo);
+  if (coloIds.length === 0) return rawCostPerColo;
+
+  const result: Record<string, number> = {};
+  if (totalBomCost === 0) {
+    // No BOM cost to use as weights — distribute extras equally
+    const equalShare = totalExtras / coloIds.length;
+    for (const coloId of coloIds) {
+      result[coloId] = Math.round(equalShare * 100) / 100;
+    }
+  } else {
+    for (const [coloId, rawCost] of Object.entries(rawCostPerColo)) {
+      const pct = (rawCost || 0) / totalBomCost;
+      result[coloId] = Math.round(((rawCost || 0) + totalExtras * pct) * 100) / 100;
+    }
+  }
+  return result;
+}
+
 // ─── Full Quote Calculation ─────────────────────────────────────
 
 export function calculateTechnologyQuote(

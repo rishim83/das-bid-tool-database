@@ -21,6 +21,7 @@ import {
   calculateSchedule,
   calculateTechnologyQuote,
   computeEffectiveLaborHoursPerColo,
+  computeEffectiveEquipmentCostPerColo,
 } from "@/lib/calculations";
 import { saveProject } from "@/lib/storage";
 
@@ -60,7 +61,8 @@ export function useProject(initialProject: Project) {
     return project.technologies.map((tech) => {
       if (!tech.enabled) return tech;
       const effectiveHours = computeEffectiveLaborHoursPerColo(tech, psd, numGuys, hpd);
-      return { ...tech, installLaborHours: effectiveHours };
+      const effectiveEquipment = computeEffectiveEquipmentCostPerColo(tech);
+      return { ...tech, installLaborHours: effectiveHours, equipmentCost: effectiveEquipment };
     });
   }, [project.technologies, psd, numGuys, hpd]);
 

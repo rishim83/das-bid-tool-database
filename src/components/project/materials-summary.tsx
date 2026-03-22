@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { TechnologyConfig, TechnologyType, EquipmentCostBreakdown } from "@/types";
+import type { TechnologyConfig, TechnologyType } from "@/types";
 import { TECHNOLOGY_LABELS, TECHNOLOGY_DOT } from "@/lib/constants";
 import { formatCurrency } from "@/lib/calculations";
 import { ChevronDown, ChevronRight } from "lucide-react";
@@ -17,22 +17,34 @@ export function MaterialsSummary({ technologies }: Props) {
 
   const scopeData = SCOPE_TYPES.map((type) => {
     const tech = technologies.find((t) => t.type === type && t.enabled);
-    if (!tech) return { type, total: 0, breakdown: null as EquipmentCostBreakdown | null };
+    if (!tech) return { type, total: 0, dynBreakdown: null as null };
 
-    const total = Object.values(tech.equipmentCost).reduce((s, v) => s + (v || 0), 0);
-    return { type, total, breakdown: tech.equipmentCostBreakdown ?? null };
+    // Raw BOM cost (stored per colo)
+    const bomCost = Object.values(tech.equipmentCost).reduce((s, v) => s + (v || 0), 0);
+    // Dynamic extras (live from current tech state)
+    const waterAndIce = tech.waterAndIce ?? 0;
+    const additionalMaterials = (tech.additionalMaterials ?? []).filter((m) => (m.value || 0) > 0);
+    const total = bomCost + waterAndIce + additionalMaterials.reduce((s, m) => s + m.value, 0);
+
+    const dynBreakdown = {
+      bom: bomCost,
+      waterAndIce,
+      additionalMaterials,
+    };
+
+    return { type, total, dynBreakdown };
   });
 
   const anyMaterials = scopeData.some((s) => s.total > 0);
   if (!anyMaterials) return null;
 
-  const hasAnyBreakdown = scopeData.some((s) => s.breakdown !== null);
+  const hasAnyBreakdown = scopeData.some((s) => s.dynBreakdown !== null && s.dynBreakdown.bom > 0);
 
   // Collect all unique additional material names across all scopes
   const allAdditionalMaterialNames = Array.from(
     new Set(
       scopeData.flatMap((s) =>
-        (s.breakdown?.additionalMaterials ?? []).map(
+        (s.dynBreakdown?.additionalMaterials ?? []).map(
           (m: { name: string; value: number }) => m.name || "Additional Material"
         )
       )
@@ -46,20 +58,20 @@ export function MaterialsSummary({ technologies }: Props) {
   const breakdownRows: BreakdownRow[] = [
     {
       kind: "row",
-      label: "Materials Pricing",
-      getValue: (s) => s.breakdown?.bom ?? 0,
+      label: "BOM Equipment",
+      getValue: (s) => s.dynBreakdown?.bom ?? 0,
     },
     { kind: "divider" },
     {
       kind: "row",
       label: "+ Water & Ice",
-      getValue: (s) => s.breakdown?.waterAndIce ?? 0,
+      getValue: (s) => s.dynBreakdown?.waterAndIce ?? 0,
     },
     ...allAdditionalMaterialNames.map((name): BreakdownRow => ({
       kind: "row",
       label: `+ ${name}`,
       getValue: (s) =>
-        s.breakdown?.additionalMaterials.find(
+        s.dynBreakdown?.additionalMaterials.find(
           (m: { name: string; value: number }) => (m.name || "Additional Material") === name
         )?.value ?? 0,
     })),
@@ -68,7 +80,7 @@ export function MaterialsSummary({ technologies }: Props) {
   // Only keep rows that have at least one non-zero value
   const visibleRows = breakdownRows.filter((row) => {
     if (row.kind === "divider") return true;
-    return scopeData.some((s) => s.breakdown && row.getValue(s) > 0);
+    return scopeData.some((s) => s.dynBreakdown && row.getValue(s) > 0);
   });
 
   // Clean up dividers at boundaries or adjacent to each other
@@ -149,7 +161,7 @@ export function MaterialsSummary({ technologies }: Props) {
                     {row.label}
                   </td>
                   {scopeData.map((s) => {
-                    const val = s.breakdown ? row.getValue(s) : null;
+                    const val = s.dynBreakdown ? row.getValue(s) : null;
                     return (
                       <td
                         key={s.type}

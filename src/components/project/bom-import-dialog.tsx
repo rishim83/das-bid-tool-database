@@ -323,20 +323,24 @@ export function BomImportDialog({
     const addlMaterialsRaw = (tech.additionalMaterials ?? []).reduce((s, m) => s + (m.value || 0), 0);
     const matMult = 1 + materialContingency / 100;
     const labMult = 1 + laborContingency / 100;
-    // NTI: only BOM equipment (no water/ice or additional materials added)
-    // NC:  BOM + water/ice + additional materials
+    // NTI: BOM equipment × material contingency
+    // NC:  raw BOM equipment only — waterAndIce and additionalMaterials are added
+    //      dynamically at quote-calculation time (like labor extras)
+    const equipCostToStore = ntiMode
+      ? totalEquipment * matMult
+      : totalEquipment;
+    // NTI: raw BOM hours × labor contingency
+    // NC:  raw BOM hours only — extras are added dynamically at quote-calculation time
+    const hoursToStore = ntiMode ? bomHours * labMult : bomHours;
+    // Keep totalEquipmentWithExtras for the toast message and download report
     const totalEquipmentWithExtras = ntiMode
       ? totalEquipment * matMult
       : totalEquipment * matMult + waterAndIceRaw + addlMaterialsRaw;
-    // NTI: raw BOM hours × labor contingency
-    // NC:  raw BOM hours only — extras are added dynamically at quote-calculation time
-    //      (so changes to shuttle/stretch/lift/etc. take effect without re-importing)
-    const hoursToStore = ntiMode ? bomHours * labMult : bomHours;
 
     for (const d of distribution) {
       const pct = d.percentage / 100;
       installLaborHours[d.coloId] = Math.round(hoursToStore * pct * 100) / 100;
-      equipmentCost[d.coloId] = Math.round(totalEquipmentWithExtras * pct * 100) / 100;
+      equipmentCost[d.coloId] = Math.round(equipCostToStore * pct * 100) / 100;
     }
 
     const laborHoursBreakdown: LaborHoursBreakdown = {
