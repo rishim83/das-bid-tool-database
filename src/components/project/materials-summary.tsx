@@ -38,7 +38,8 @@ export function MaterialsSummary({ technologies }: Props) {
   const anyMaterials = scopeData.some((s) => s.total > 0);
   if (!anyMaterials) return null;
 
-  const hasAnyBreakdown = scopeData.some((s) => s.dynBreakdown !== null && s.dynBreakdown.bom > 0);
+  // Show breakdown chevron whenever any enabled tech exists
+  const hasAnyBreakdown = scopeData.some((s) => s.dynBreakdown !== null);
 
   // Collect all unique additional material names across all scopes
   const allAdditionalMaterialNames = Array.from(
@@ -55,11 +56,12 @@ export function MaterialsSummary({ technologies }: Props) {
     | { kind: "divider" }
     | { kind: "row"; label: string; getValue: (s: typeof scopeData[0]) => number };
 
-  const breakdownRows: BreakdownRow[] = [
+  const breakdownRows: Array<BreakdownRow & { alwaysShow?: boolean }> = [
     {
       kind: "row",
       label: "BOM Equipment",
       getValue: (s) => s.dynBreakdown?.bom ?? 0,
+      alwaysShow: true,
     },
     { kind: "divider" },
     {
@@ -77,9 +79,10 @@ export function MaterialsSummary({ technologies }: Props) {
     })),
   ];
 
-  // Only keep rows that have at least one non-zero value
+  // BOM row always shows; extras rows only show when at least one scope has a non-zero value
   const visibleRows = breakdownRows.filter((row) => {
     if (row.kind === "divider") return true;
+    if (row.alwaysShow) return true;
     return scopeData.some((s) => s.dynBreakdown && row.getValue(s) > 0);
   });
 
