@@ -484,30 +484,47 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
 
       ws.addRow([]);
 
-      // Labor hours
+      // Labor hours — computed dynamically to match current settings (same as Labor Summary)
       secHeader(ws, `${TECHNOLOGY_LABELS[tech.type]} — Labor Hours`, 5, tFill);
       colHdrs(ws, ["Item", "Hours", "", "", ""]);
-      const bd = tech.laborHoursBreakdown;
+      const expPsd  = p.projectSpecificDetails;
+      const expGuys = Math.max(p.schedule.numberOfGuys, 1);
+      const expHpd  = ip.hoursPerDay > 0 ? ip.hoursPerDay : 8;
+      const expDpw  = ip.daysPerWeek  > 0 ? ip.daysPerWeek  : 5;
+      const expBomHrs  = Object.values(tech.installLaborHours).reduce((s, h) => s + (h || 0), 0);
+      const expBd      = tech.laborHoursBreakdown;
+      const expCores   = expBd?.cores ?? 0;
+      const expBadging = !!(expPsd?.badgingSafety) ? expGuys * 4 : 0;
+      const expMH      = tech.materialHandlingHours ?? 0;
+      const expComm    = tech.commissioningSupport  ?? 0;
+      const expAddlLabor = (tech.additionalLaborItems ?? []).filter((i) => (i.hours || 0) > 0);
+      const expAddlHrs   = expAddlLabor.reduce((s, i) => s + (i.hours || 0), 0);
+      const expBase      = expBomHrs + expCores + expBadging + expMH + expComm + expAddlHrs;
+      const expBaseDays  = expBase > 0 ? expBase / expHpd : 0;
+      const expBaseWeeks = expBaseDays > 0 ? expBaseDays / expDpw : 0;
+      const expShuttle   = !!(expPsd?.extras?.shuttleServices) && expBase > 0 ? expBaseDays : 0;
+      const expStretch   = !!(expPsd?.extras?.stretchAndFlex)  && expBase > 0 ? expBaseDays * 0.5 : 0;
+      const expComposite = Number(expPsd?.extras?.compositeCleanup ?? 0);
+      const expLift      = !!(expPsd?.extras?.liftSpotters) && expBase > 0 ? (0.65 * expBase) / expGuys : 0;
+      const expEffective = expBase + expShuttle + expStretch + expComposite + expLift;
+      const expSafety    = ip.laborSafety ?? 1;
+      const expContingency = expEffective * (expSafety - 1);
+      const expBilled    = expEffective * expSafety;
+      void expBaseWeeks; // used for reference only
+
       const laborItems: [string, number][] = [];
-      if (bd) {
-        laborItems.push(["BOM Labor Hours (from database)", bd.bom]);
-        if (bd.cores > 0)                laborItems.push(["Cores", bd.cores]);
-        if (bd.badging > 0)              laborItems.push(["Badging / Safety", bd.badging]);
-        if (bd.materialHandling > 0)     laborItems.push(["Material Handling", bd.materialHandling]);
-        if (bd.commissioningSupport > 0) laborItems.push(["Commissioning Support", bd.commissioningSupport]);
-        (bd.additionalLaborItems ?? []).forEach((it) => { if (it.hours > 0) laborItems.push([it.description || "Additional Labor", it.hours]); });
-        if (bd.shuttleServices > 0)  laborItems.push(["Shuttle Services", bd.shuttleServices]);
-        if (bd.stretchAndFlex > 0)   laborItems.push(["Stretch & Flex", bd.stretchAndFlex]);
-        if (bd.compositeCleanup > 0) laborItems.push(["Composite Cleanup", bd.compositeCleanup]);
-        if (bd.liftSpotters > 0)     laborItems.push(["Lift Spotters", bd.liftSpotters]);
-      } else {
-        const bomTot = Object.values(tech.installLaborHours).reduce((s, h) => s + (h || 0), 0);
-        laborItems.push(["BOM Labor Hours", bomTot]);
-        if ((tech.materialHandlingHours ?? 0) > 0) laborItems.push(["Material Handling", tech.materialHandlingHours ?? 0]);
-        if ((tech.commissioningSupport  ?? 0) > 0) laborItems.push(["Commissioning Support", tech.commissioningSupport ?? 0]);
-        (tech.additionalLaborItems ?? []).forEach((it) => { if (it.hours > 0) laborItems.push([it.description || "Additional Labor", it.hours]); });
-      }
-      const totalLaborHrs = laborItems.reduce((s, [, h]) => s + h, 0);
+      if (expBomHrs > 0)  laborItems.push(["BOM Labor Hours (from database)", expBomHrs]);
+      if (expCores > 0)   laborItems.push(["Cores", expCores]);
+      if (expBadging > 0) laborItems.push(["Badging / Safety", expBadging]);
+      if (expMH > 0)      laborItems.push(["Material Handling", expMH]);
+      if (expComm > 0)    laborItems.push(["Commissioning Support", expComm]);
+      expAddlLabor.forEach((it) => { if (it.hours > 0) laborItems.push([it.description || "Additional Labor", it.hours]); });
+      if (expShuttle > 0)   laborItems.push(["Shuttle Services", expShuttle]);
+      if (expStretch > 0)   laborItems.push(["Stretch & Flex", expStretch]);
+      if (expComposite > 0) laborItems.push(["Composite Cleanup", expComposite]);
+      if (expLift > 0)      laborItems.push(["Lift Spotters", expLift]);
+      if (expContingency > 0) laborItems.push([`Labor Contingency (×${expSafety.toFixed(2)})`, expContingency]);
+      const totalLaborHrs = expBilled;
       laborItems.forEach(([label, hrs], i) => {
         const r = dataRow(ws, [label, hrs, null, null, null], i % 2 === 1);
         r.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
@@ -536,10 +553,10 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
       }
       const rental  = tech.rentalEquipment ?? DEFAULT_RENTAL_EQUIPMENT;
       const liftRaw = (rental.lift.numberOfLifts ?? 1) * rental.lift.months * rental.lift.costPerMonth;
-      if (liftRaw > 0) matItems.push(["Lift Rental", liftRaw, null]);
+      if (liftRaw > 0) matItems.push(["Lift Rental", liftRaw, liftRaw * travelMarkupMultiplier]);
       (rental.additionalItems ?? []).forEach((item) => {
         const val = item.months * item.costPerMonth;
-        if (val > 0) matItems.push([`Rental: ${item.name}`, val, null]);
+        if (val > 0) matItems.push([`Rental: ${item.name}`, val, val * travelMarkupMultiplier]);
       });
       matItems.forEach(([label, raw, sell], i) => {
         const r = dataRow(ws, [label, raw, sell ?? null, null, null], i % 2 === 1);
