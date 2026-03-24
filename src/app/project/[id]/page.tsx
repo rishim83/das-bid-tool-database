@@ -37,16 +37,42 @@ function migrateProject(p: Project): Project {
   const inputParameters = { ...DEFAULT_INPUT_PARAMETERS, ...p.inputParameters };
   // Migrate waterAndIce from legacy psd.extras to first tech (it was project-level before)
   const legacyWaterAndIce: number = legacyPsd?.extras?.waterAndIce ?? 0;
-  const technologies = p.technologies.map((tech: TechnologyConfig, idx: number) => ({
-    ...tech,
-    materialHandlingHours: tech.materialHandlingHours ?? (legacyPsd?.materialHandlingHours ?? 0),
-    commissioningSupport: tech.commissioningSupport ?? (legacyPsd?.commissioningSupport ?? 0),
-    additionalLaborItems: tech.additionalLaborItems ?? (legacyPsd?.additionalLaborItems ?? []),
-    subContractors: tech.subContractors ?? (idx === 0 ? (p.subContractors ?? []) : []),
-    rentalEquipment: tech.rentalEquipment ?? (idx === 0 ? (p.rentalEquipment ?? DEFAULT_RENTAL_EQUIPMENT) : DEFAULT_RENTAL_EQUIPMENT),
-    waterAndIce: tech.waterAndIce ?? (idx === 0 ? legacyWaterAndIce : 0),
-    additionalMaterials: tech.additionalMaterials ?? [],
-  }));
+  const technologies = p.technologies.map((tech: TechnologyConfig, idx: number) => {
+    const base = {
+      ...tech,
+      materialHandlingHours: tech.materialHandlingHours ?? (legacyPsd?.materialHandlingHours ?? 0),
+      commissioningSupport: tech.commissioningSupport ?? (legacyPsd?.commissioningSupport ?? 0),
+      additionalLaborItems: tech.additionalLaborItems ?? (legacyPsd?.additionalLaborItems ?? []),
+      subContractors: tech.subContractors ?? (idx === 0 ? (p.subContractors ?? []) : []),
+      rentalEquipment: tech.rentalEquipment ?? (idx === 0 ? (p.rentalEquipment ?? DEFAULT_RENTAL_EQUIPMENT) : DEFAULT_RENTAL_EQUIPMENT),
+      waterAndIce: tech.waterAndIce ?? (idx === 0 ? legacyWaterAndIce : 0),
+      additionalMaterials: tech.additionalMaterials ?? [],
+    };
+
+    // Strip extras baked into equipmentCost by pre-fix imports.
+    // If equipmentCostBreakdown exists and its bom + extras ≈ current equipmentCost total,
+    // the extras were baked in — redistribute only the raw BOM across colos.
+    const ebd = base.equipmentCostBreakdown;
+    if (ebd) {
+      const extras = (ebd.waterAndIce ?? 0) +
+        (ebd.additionalMaterials ?? []).reduce((s: number, m: { value: number }) => s + m.value, 0);
+      if (extras > 0) {
+        const oldTotal = Object.values(base.equipmentCost).reduce((s: number, v) => s + (v || 0), 0);
+        const bom = ebd.bom ?? 0;
+        if (Math.abs(oldTotal - bom - extras) < 1) {
+          // Extras are baked in — strip them out, keeping only raw BOM per colo
+          const fixedCost: Record<string, number> = {};
+          for (const [coloId, oldVal] of Object.entries(base.equipmentCost)) {
+            const pct = oldTotal > 0 ? (oldVal || 0) / oldTotal : 0;
+            fixedCost[coloId] = Math.round(bom * pct * 100) / 100;
+          }
+          return { ...base, equipmentCost: fixedCost };
+        }
+      }
+    }
+
+    return base;
+  });
   return { ...p, inputParameters, technologies };
 }
 
@@ -536,21 +562,17 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
 
       ws.addRow([]);
 
-      // Materials
+      // Materials — always use live tech values so export matches the tool display
       secHeader(ws, `${TECHNOLOGY_LABELS[tech.type]} — Materials & Equipment`, 5, tFill);
       colHdrs(ws, ["Item", "Raw ($)", "Sell ($)", "", ""]);
-      const ebd    = tech.equipmentCostBreakdown;
       const rawBOM = Object.values(tech.equipmentCost).reduce((s, c) => s + (c || 0), 0);
       const matItems: [string, number, number | null][] = [
         ["BOM Equipment (from database)", rawBOM, rawBOM * ip.materialSafety * ip.markUp],
       ];
-      if (ebd) {
-        if (ebd.waterAndIce > 0) matItems.push(["Water & Ice", ebd.waterAndIce, ebd.waterAndIce * ip.materialSafety * ip.markUp]);
-        (ebd.additionalMaterials ?? []).forEach((m) => { if (m.value > 0) matItems.push([m.name || "Additional Material", m.value, m.value * ip.materialSafety * ip.markUp]); });
-      } else {
-        if ((tech.waterAndIce ?? 0) > 0) matItems.push(["Water & Ice", tech.waterAndIce ?? 0, (tech.waterAndIce ?? 0) * ip.materialSafety * ip.markUp]);
-        (tech.additionalMaterials ?? []).forEach((m) => { if (m.value > 0) matItems.push([m.name || "Additional Material", m.value, m.value * ip.materialSafety * ip.markUp]); });
-      }
+      if ((tech.waterAndIce ?? 0) > 0) matItems.push(["Water & Ice", tech.waterAndIce!, tech.waterAndIce! * ip.materialSafety * ip.markUp]);
+      (tech.additionalMaterials ?? []).filter((m) => m.value > 0).forEach((m) => {
+        matItems.push([m.name || "Additional Material", m.value, m.value * ip.materialSafety * ip.markUp]);
+      });
       const rental  = tech.rentalEquipment ?? DEFAULT_RENTAL_EQUIPMENT;
       const liftRaw = (rental.lift.numberOfLifts ?? 1) * rental.lift.months * rental.lift.costPerMonth;
       if (liftRaw > 0) matItems.push(["Lift Rental", liftRaw, liftRaw * travelMarkupMultiplier]);
