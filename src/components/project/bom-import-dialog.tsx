@@ -407,6 +407,8 @@ export function BomImportDialog({
       "Manufacturer",
       "",
       "QTY",
+      "",
+      "",
       `Material Unit Cost${materialContingency > 0 ? ` (+${materialContingency}%)` : ""}`,
       `Labor Unit Hours${laborContingency > 0 ? ` (+${laborContingency}%)` : ""}`,
       "RF Services ($)",
@@ -419,7 +421,7 @@ export function BomImportDialog({
       .filter((item) => coloSites.some((c) => (item.values[c.id] || 0) > 0))
       .map((item) => {
         const rfTotal = coloSites.reduce((s, c) => s + (item.values[c.id] || 0), 0);
-        return ["RF", item.description || "RF Engineering", "", 1, 0, 0, rfTotal, 0, 0];
+        return ["RF", item.description || "RF Engineering", "", 1, "", "", 0, 0, rfTotal, 0, 0];
       });
 
     const dataRows = [
@@ -442,6 +444,8 @@ export function BomImportDialog({
           item.manufacturer || "",
           "",
           item.quantity,
+          "",
+          "",
           adjPrice,
           adjLabor,
           "",
@@ -458,6 +462,8 @@ export function BomImportDialog({
           item.manufacturer || "",
           "",
           item.quantity,
+          "",
+          "",
           adjPrice,
           adjLabor,
           "",
@@ -474,6 +480,8 @@ export function BomImportDialog({
               `Cores (${projectSpecificDetails!.cores.count} cores × ${pccHoursPerUnit} hrs/core)`,
               "",
               projectSpecificDetails!.cores.count,
+              "",
+              "",
               0,
               pccHoursPerUnit * labMult,
               "",
@@ -488,6 +496,8 @@ export function BomImportDialog({
               `Badging / Safety (${numberOfGuys} techs × 4 hrs)`,
               "",
               numberOfGuys,
+              "",
+              "",
               0,
               4 * labMult,
               "",
@@ -502,6 +512,8 @@ export function BomImportDialog({
               "Material Handling (Tech Level)",
               "",
               1,
+              "",
+              "",
               0,
               materialHandlingHours * labMult,
               "",
@@ -516,6 +528,8 @@ export function BomImportDialog({
               "Commissioning Support (Tech Level)",
               "",
               1,
+              "",
+              "",
               0,
               commissioningHours * labMult,
               "",
@@ -529,6 +543,8 @@ export function BomImportDialog({
           item.description || "Additional Labor",
           "",
           1,
+          "",
+          "",
           0,
           item.hours * labMult,
           "",
@@ -537,32 +553,32 @@ export function BomImportDialog({
         ]),
         // Extras
         ...(shuttleHours > 0
-          ? [["SHUTTLE", `Shuttle Services (${baseDays.toFixed(1)} project days × 1 hr)`, "", 1, 0, shuttleHours * labMult, "", 0, shuttleHours * labMult]]
+          ? [["SHUTTLE", `Shuttle Services (${baseDays.toFixed(1)} project days × 1 hr)`, "", 1, "", "", 0, shuttleHours * labMult, "", 0, shuttleHours * labMult]]
           : []),
         ...(stretchHours > 0
-          ? [["S&F", `Stretch & Flex (${baseDays.toFixed(1)} project days × 0.5 hrs)`, "", 1, 0, stretchHours * labMult, "", 0, stretchHours * labMult]]
+          ? [["S&F", `Stretch & Flex (${baseDays.toFixed(1)} project days × 0.5 hrs)`, "", 1, "", "", 0, stretchHours * labMult, "", 0, stretchHours * labMult]]
           : []),
         ...(compositeHours > 0
-          ? [["CLEANUP", `Composite Cleanup (${baseWeeks.toFixed(1)} wks × 8 hrs)`, "", 1, 0, compositeHours * labMult, "", 0, compositeHours * labMult]]
+          ? [["CLEANUP", `Composite Cleanup (${baseWeeks.toFixed(1)} wks × 8 hrs)`, "", 1, "", "", 0, compositeHours * labMult, "", 0, compositeHours * labMult]]
           : []),
         ...(liftHours > 0
-          ? [["LIFT", `Lift Spotters (65% × ${baseHours.toFixed(1)} hrs ÷ ${guys} guys)`, "", 1, 0, liftHours * labMult, "", 0, liftHours * labMult]]
+          ? [["LIFT", `Lift Spotters (65% × ${baseHours.toFixed(1)} hrs ÷ ${guys} guys)`, "", 1, "", "", 0, liftHours * labMult, "", 0, liftHours * labMult]]
           : []),
         // Water & Ice
         ...((tech.waterAndIce ?? 0) > 0
-          ? [["W&I", "Water & Ice (Tech Level)", "", 1, tech.waterAndIce, 0, "", tech.waterAndIce, 0]]
+          ? [["W&I", "Water & Ice (Tech Level)", "", 1, "", "", tech.waterAndIce, 0, "", tech.waterAndIce, 0]]
           : []),
         // Additional Materials
         ...(tech.additionalMaterials ?? [])
           .filter((m) => (m.value || 0) > 0)
-          .map((m) => ["ADDL-MAT", m.name || "Additional Material", "", 1, m.value, 0, "", m.value, 0]),
+          .map((m) => ["ADDL-MAT", m.name || "Additional Material", "", 1, "", "", m.value, 0, "", m.value, 0]),
       ] : []),
     ];
 
     const ws = XLSX.utils.aoa_to_sheet([header, ...dataRows]);
     // Set column widths: A, B, C, D, E, F, G, H, I
     ws["!cols"] = [
-      { wch: 22 }, { wch: 28 }, { wch: 4 }, { wch: 6 },
+      { wch: 22 }, { wch: 28 }, { wch: 4 }, { wch: 6 }, { wch: 4 }, { wch: 4 },
       { wch: 22 }, { wch: 22 }, { wch: 18 }, { wch: 20 }, { wch: 18 },
     ];
     const wb = XLSX.utils.book_new();

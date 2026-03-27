@@ -609,7 +609,7 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ws2: any = wb.addWorksheet("BOM Report");
     ws2.columns = [
-      { width: 14 }, { width: 36 }, { width: 7 },
+      { width: 14 }, { width: 36 }, { width: 7 }, { width: 7 }, { width: 7 },
       { width: 18 }, { width: 16 }, { width: 18 }, { width: 18 },
     ];
 
@@ -624,14 +624,14 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
       // Tech section header (tech colour)
       const t2Fill = TECH_FILL[tech.type] ?? NAVY_FILL;
       const thRow = ws2.addRow([TECHNOLOGY_LABELS[tech.type]]);
-      ws2.mergeCells(thRow.number, 1, thRow.number, 7);
+      ws2.mergeCells(thRow.number, 1, thRow.number, 9);
       thRow.getCell(1).fill = t2Fill;
       thRow.getCell(1).font = { bold: true, size: 13, color: WHITE };
       thRow.getCell(1).alignment = { vertical: "middle", horizontal: "left", indent: 1 };
       thRow.height = 26;
 
       // Column headers
-      const hRow = ws2.addRow(["Part #", "Description / Manufacturer", "QTY", "Equip Unit ($)", "Equip Total ($)", "Labor Hrs/Unit", "Total Labor Hrs"]);
+      const hRow = ws2.addRow(["Part #", "Description / Manufacturer", "QTY", "", "", "Equip Unit ($)", "Equip Total ($)", "Labor Hrs/Unit", "Total Labor Hrs"]);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       hRow.eachCell({ includeEmpty: true }, (cell: any, cn: number) => {
         cell.fill = BLUE_FILL;
@@ -648,6 +648,8 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
           row.code,
           desc,
           row.qty,
+          null,
+          null,
           row.unitEquipPrice || null,
           row.totalEquipPrice || null,
           row.unitLaborHrs || null,
@@ -660,10 +662,10 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
           cell.alignment = { vertical: "middle", horizontal: cn <= 2 ? "left" : "right" };
           cell.border = BORDER;
         });
-        if (row.unitEquipPrice)  r.getCell(4).numFmt = USD;
-        if (row.totalEquipPrice) r.getCell(5).numFmt = USD;
-        if (row.unitLaborHrs)    r.getCell(6).numFmt = HRS_FMT;
-        if (row.totalLaborHrs)   r.getCell(7).numFmt = HRS_FMT;
+        if (row.unitEquipPrice)  r.getCell(6).numFmt = USD;
+        if (row.totalEquipPrice) r.getCell(7).numFmt = USD;
+        if (row.unitLaborHrs)    r.getCell(8).numFmt = HRS_FMT;
+        if (row.totalLaborHrs)   r.getCell(9).numFmt = HRS_FMT;
         r.height = 16;
         bAlt = !bAlt;
       });
@@ -671,7 +673,7 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
       // Totals row
       const totEquip = rows.reduce((s, r) => s + (r.totalEquipPrice || 0), 0);
       const totLabor = rows.reduce((s, r) => s + (r.totalLaborHrs  || 0), 0);
-      const tRow = ws2.addRow(["", "TOTAL", null, null, totEquip, null, totLabor]);
+      const tRow = ws2.addRow(["", "TOTAL", null, null, null, null, totEquip, null, totLabor]);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       tRow.eachCell({ includeEmpty: true }, (cell: any, cn: number) => {
         cell.fill = TOTAL_FILL;
@@ -679,14 +681,14 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
         cell.alignment = { vertical: "middle", horizontal: cn <= 2 ? "left" : "right" };
         cell.border = BORDER;
       });
-      tRow.getCell(5).numFmt = USD;
-      tRow.getCell(7).numFmt = HRS_FMT;
+      tRow.getCell(7).numFmt = USD;
+      tRow.getCell(9).numFmt = HRS_FMT;
       tRow.height = 18;
     });
 
     if (!hasBOM) {
       const nRow = ws2.addRow(["No BOM data available. Import and apply a BOM on the project page first, then re-export."]);
-      ws2.mergeCells(nRow.number, 1, nRow.number, 7);
+      ws2.mergeCells(nRow.number, 1, nRow.number, 9);
       nRow.getCell(1).font = { italic: true, color: GRAY, size: 10 };
       nRow.height = 20;
     }

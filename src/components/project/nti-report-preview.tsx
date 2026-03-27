@@ -80,7 +80,7 @@ export function NTIReportPreview({ tech, coloSites, materialContingency, laborCo
 
   const handleCopy = () => {
     const headers = [
-      "Part Number", "Manufacturer", "", "QTY",
+      "Part Number", "Manufacturer", "", "QTY", "", "",
       matLabel, labLabel, "RF Services ($)", "Material Total Cost", "Labor Total Hours",
     ];
     const dataRows = allRows.map((r) => [
@@ -88,6 +88,8 @@ export function NTIReportPreview({ tech, coloSites, materialContingency, laborCo
       r.manufacturer,
       "",
       r.qty,
+      "",
+      "",
       r.unitEquipPrice > 0 ? r.unitEquipPrice.toFixed(2) : "",
       r.unitLaborHrs > 0  ? r.unitLaborHrs.toFixed(4)   : "",
       r.rfServices > 0    ? r.rfServices.toFixed(2)      : "",
@@ -95,7 +97,7 @@ export function NTIReportPreview({ tech, coloSites, materialContingency, laborCo
       r.laborTotal > 0    ? r.laborTotal.toFixed(4)      : "",
     ]);
     const totalRow = [
-      "", "TOTAL", "", "",
+      "", "TOTAL", "", "", "", "",
       "", "",
       totalRF  > 0 ? totalRF.toFixed(2)  : "",
       totalMat > 0 ? totalMat.toFixed(2) : "",
@@ -140,6 +142,8 @@ export function NTIReportPreview({ tech, coloSites, materialContingency, laborCo
               <th className="px-3 py-2 text-left font-medium text-muted-foreground whitespace-nowrap">Part Number</th>
               <th className="px-3 py-2 text-left font-medium text-muted-foreground whitespace-nowrap">Manufacturer / Description</th>
               <th className="px-2 py-2 text-right font-medium text-muted-foreground">QTY</th>
+              <th className="px-2 py-2" />
+              <th className="px-2 py-2" />
               <th className="px-3 py-2 text-right font-medium text-muted-foreground whitespace-nowrap">{matLabel}</th>
               <th className="px-3 py-2 text-right font-medium text-muted-foreground whitespace-nowrap">{labLabel}</th>
               <th className="px-3 py-2 text-right font-medium text-muted-foreground whitespace-nowrap">RF Services ($)</th>
@@ -156,6 +160,8 @@ export function NTIReportPreview({ tech, coloSites, materialContingency, laborCo
                 <td className="px-3 py-1.5 font-mono">{row.code}</td>
                 <td className="px-3 py-1.5 text-muted-foreground">{row.manufacturer}</td>
                 <td className="px-2 py-1.5 text-right tabular-nums">{row.qty}</td>
+                <td className="px-2 py-1.5" />
+                <td className="px-2 py-1.5" />
                 <td className="px-3 py-1.5 text-right tabular-nums font-mono">
                   {row.unitEquipPrice > 0 ? formatCurrency(row.unitEquipPrice) : ""}
                 </td>
@@ -177,6 +183,8 @@ export function NTIReportPreview({ tech, coloSites, materialContingency, laborCo
           <tfoot>
             <tr className="border-t-2 border-border/60 bg-secondary/40 font-semibold">
               <td className="px-3 py-2" colSpan={2}>TOTAL</td>
+              <td className="px-2 py-2" />
+              <td className="px-2 py-2" />
               <td className="px-2 py-2" />
               <td className="px-3 py-2" />
               <td className="px-3 py-2" />
