@@ -882,24 +882,12 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
   // Shared sidebar props
   const sidebarProps = {
     project,
-    psd,
-    fullSchedule,
-    pmTravelCalculated,
-    installTravelCalc,
     activeTab,
     isNTI,
-    activePanel,
-    onUpdateInputParameters: updateInputParameters,
-    onUpdateSchedule: updateSchedule,
-    onUpdatePMTravel: updatePMTravel,
-    onUpdateInstallTravel: updateInstallTravel,
-    onUpdateColoSites: updateColoSites,
     onUpdateTechnology: updateTechnology,
     onUpdateProjectMeta: updateProjectMeta,
-    onUpdateProjectSpecificDetails: updateProjectSpecificDetails,
     onTabChange: (tab: TechnologyType) => setActiveTab(tab),
     onOpenPanel: (id: SidebarPanelId) => setActivePanel(id),
-    onClosePanel: () => setActivePanel(null),
   };
 
   const overlayProps = {

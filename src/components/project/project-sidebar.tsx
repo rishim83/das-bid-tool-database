@@ -17,12 +17,8 @@ import type {
 import {
   DEFAULT_RENTAL_EQUIPMENT,
   DEFAULT_INSTALL_TRAVEL,
-  DEFAULT_PM_TRAVEL,
-  DEFAULT_PROJECT_SPECIFIC_DETAILS,
-  DEFAULT_PROJECT_EXTRAS,
-  DEFAULT_INPUT_PARAMETERS,
 } from "@/types";
-import { TECHNOLOGY_LABELS, TECHNOLOGY_DOT, TECHNOLOGY_BG } from "@/lib/constants";
+import { TECHNOLOGY_LABELS, TECHNOLOGY_DOT } from "@/lib/constants";
 import { formatCurrency } from "@/lib/calculations";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -33,9 +29,6 @@ import {
   ChevronsUpDown,
   MapPin,
   SlidersHorizontal,
-  Clock,
-  Plane,
-  Wrench,
   PackageOpen,
   X,
 } from "lucide-react";
@@ -190,44 +183,22 @@ function TechToggle({
 
 interface Props {
   project: Project;
-  psd: ProjectSpecificDetails;
-  fullSchedule: Schedule;
-  pmTravelCalculated: PMTravelCalculated;
-  installTravelCalc: InstallTravelCalculated | null;
   activeTab: TechnologyType;
   isNTI: boolean;
-  activePanel: SidebarPanelId | null;
-  onUpdateInputParameters: (p: InputParameters) => void;
-  onUpdateSchedule: (s: Schedule) => void;
-  onUpdatePMTravel: (t: PMTravelEstimate) => void;
-  onUpdateInstallTravel: (t: InstallTravelConfig) => void;
-  onUpdateColoSites: (sites: ColoSite[]) => void;
   onUpdateTechnology: (t: TechnologyConfig) => void;
   onUpdateProjectMeta: (patch: Partial<Project>) => void;
-  onUpdateProjectSpecificDetails: (psd: ProjectSpecificDetails) => void;
   onTabChange: (tab: TechnologyType) => void;
   onOpenPanel: (id: SidebarPanelId) => void;
-  onClosePanel: () => void;
 }
 
 const TECH_TYPES: TechnologyType[] = ["DAS", "PUBLIC_SAFETY", "ROIP"];
 
 export function ProjectSidebar({
   project,
-  psd,
-  fullSchedule,
-  pmTravelCalculated,
-  installTravelCalc,
   activeTab,
   isNTI,
-  onUpdateInputParameters,
-  onUpdateSchedule,
   onUpdateTechnology,
-  onUpdateColoSites,
   onUpdateProjectMeta,
-  onUpdateProjectSpecificDetails,
-  onUpdatePMTravel,
-  onUpdateInstallTravel,
   onTabChange,
   onOpenPanel,
 }: Props) {
@@ -328,46 +299,6 @@ export function ProjectSidebar({
         </SidebarSection>
       )}
 
-      {/* ── SCHEDULE (NC only, inline) ────────────────── */}
-      {!isNTI && (
-        <SidebarSection
-          title="Schedule"
-          icon={<Clock className="h-3.5 w-3.5" />}
-          summary={`${fullSchedule.numberOfGuys} techs · ${ip.hoursPerDay ?? 8}h/day`}
-        >
-          <InlineField
-            label="Techs on site"
-            value={fullSchedule.numberOfGuys}
-            onChange={(v) => onUpdateSchedule({ ...fullSchedule, numberOfGuys: Math.max(1, Math.round(v)) })}
-            step="1"
-          />
-          <InlineField
-            label="Hours / day"
-            value={ip.hoursPerDay ?? 8}
-            onChange={(v) => onUpdateInputParameters({ ...ip, hoursPerDay: v })}
-          />
-          <InlineField
-            label="Days / week"
-            value={ip.daysPerWeek ?? 5}
-            onChange={(v) => onUpdateInputParameters({ ...ip, daysPerWeek: v })}
-          />
-        </SidebarSection>
-      )}
-
-      {/* ── TRAVEL (NC only) ─────────────────────────── */}
-      {!isNTI && (
-        <SidebarSection
-          title="Travel"
-          icon={<Plane className="h-3.5 w-3.5" />}
-          summary={pmTravelCalculated.totalPerTrip > 0 ? `PM ${formatCurrency(pmTravelCalculated.totalPerTrip)}/trip` : "Not set"}
-        >
-          <PanelTrigger
-            label="PM & Install Travel"
-            summary={pmTravelCalculated.totalPerTrip > 0 ? `${formatCurrency(pmTravelCalculated.totalPerTrip)}/trip` : undefined}
-            onClick={() => onOpenPanel("parameters")}
-          />
-        </SidebarSection>
-      )}
 
       {/* ── PER-TECH INPUTS ──────────────────────────── */}
       <SidebarSection
@@ -451,67 +382,6 @@ export function ProjectSidebar({
         })}
       </SidebarSection>
 
-      {/* ── PROJECT EXTRAS (NC only, inline) ─────────── */}
-      {!isNTI && (
-        <SidebarSection
-          title="Project Extras"
-          icon={<Wrench className="h-3.5 w-3.5" />}
-          summary={[
-            psd.extras?.shuttleServices && "Shuttle",
-            psd.extras?.stretchAndFlex && "Stretch",
-            psd.extras?.liftSpotters && "Lift Spotters",
-            psd.badgingSafety && "Badging",
-          ].filter(Boolean).join(" · ") || "None"}
-        >
-          {(
-            [
-              { id: "shuttleServices", label: "Shuttle Services" },
-              { id: "stretchAndFlex",  label: "Stretch & Flex" },
-              { id: "liftSpotters",    label: "Lift Spotters" },
-            ] as { id: keyof typeof psd.extras; label: string }[]
-          ).map(({ id, label }) => (
-            <label key={id} className="flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-sidebar-accent/50 transition-colors">
-              <input
-                type="checkbox"
-                checked={!!(psd.extras as unknown as Record<string, unknown>)?.[id]}
-                onChange={(e) => onUpdateProjectSpecificDetails({
-                  ...psd,
-                  extras: { ...psd.extras, [id]: e.target.checked },
-                })}
-                className="h-3.5 w-3.5 rounded border-border/50 accent-primary cursor-pointer shrink-0"
-              />
-              <span className="text-xs text-foreground/80">{label}</span>
-            </label>
-          ))}
-          <label className="flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-sidebar-accent/50 transition-colors">
-            <input
-              type="checkbox"
-              checked={!!psd.badgingSafety}
-              onChange={(e) => onUpdateProjectSpecificDetails({ ...psd, badgingSafety: e.target.checked })}
-              className="h-3.5 w-3.5 rounded border-border/50 accent-primary cursor-pointer shrink-0"
-            />
-            <span className="text-xs text-foreground/80">Badging / Safety</span>
-          </label>
-          <InlineField
-            label="Composite Cleanup"
-            value={Number(psd.extras?.compositeCleanup ?? 0)}
-            onChange={(v) => onUpdateProjectSpecificDetails({
-              ...psd,
-              extras: { ...psd.extras, compositeCleanup: v },
-            })}
-            suffix="hrs"
-          />
-          <InlineField
-            label="Admin Hours"
-            value={psd.extras?.adminHours ?? 15}
-            onChange={(v) => onUpdateProjectSpecificDetails({
-              ...psd,
-              extras: { ...psd.extras, adminHours: v },
-            })}
-            suffix="%"
-          />
-        </SidebarSection>
-      )}
     </div>
   );
 }
