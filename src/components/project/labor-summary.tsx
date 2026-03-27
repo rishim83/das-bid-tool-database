@@ -78,15 +78,18 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
     return { type, totalHours, contingencyHours, billedHours, totalDays, totalWeeks, breakdown: bd, dynBreakdown };
   });
 
-  const anyHours = scopeData.some((s) => (s.billedHours ?? 0) > 0);
+  // Only show columns for enabled technologies
+  const visibleScopeData = scopeData.filter((s) => s.dynBreakdown !== null);
+
+  const anyHours = visibleScopeData.some((s) => (s.billedHours ?? 0) > 0);
   if (!anyHours) return null;
 
-  const hasAnyBreakdown = scopeData.some((s) => s.dynBreakdown !== null && s.dynBreakdown.bom > 0);
+  const hasAnyBreakdown = visibleScopeData.some((s) => s.dynBreakdown !== null && s.dynBreakdown.bom > 0);
 
   // Collect all unique additional labor item descriptions across all scopes
   const allAdditionalLabels = Array.from(
     new Set(
-      scopeData.flatMap((s) => (s.dynBreakdown?.additionalLaborItems ?? []).map((i) => i.description))
+      visibleScopeData.flatMap((s) => (s.dynBreakdown?.additionalLaborItems ?? []).map((i) => i.description))
     )
   );
 
@@ -124,7 +127,7 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
   // Only show breakdown rows that have at least one non-zero value (excluding dividers)
   const visibleBreakdownRows = breakdownRows.filter((row) => {
     if (row.kind === "divider") return true;
-    return scopeData.some((s) => s.dynBreakdown && row.getValue(s) > 0);
+    return visibleScopeData.some((s) => s.dynBreakdown && row.getValue(s) > 0);
   });
 
   // Remove divider if it's first, last, or adjacent to another divider
@@ -147,7 +150,7 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
           <thead>
             <tr className="border-b border-border/40 bg-card">
               <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground min-w-[160px]" />
-              {scopeData.map(({ type }) => (
+              {visibleScopeData.map(({ type }) => (
                 <th key={type} className="px-4 py-2 text-right text-xs font-medium min-w-[120px]">
                   <div className="flex items-center justify-end">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase ${TECHNOLOGY_BG[type]} ${TECHNOLOGY_TINT_DARK[type]}`}>
@@ -176,7 +179,7 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
                   Total Hours
                 </div>
               </td>
-              {scopeData.map(({ type, billedHours }) => (
+              {visibleScopeData.map(({ type, billedHours }) => (
                 <td key={type} className="px-4 py-2 text-right font-mono text-xs tabular-nums text-muted-foreground">
                   {fmt(billedHours ?? 0, 0)}
                 </td>
@@ -188,14 +191,14 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
               if (row.kind === "divider") {
                 return (
                   <tr key={`div-${i}`} className="border-t border-border/15">
-                    <td colSpan={scopeData.length + 1} className="h-px p-0" />
+                    <td colSpan={visibleScopeData.length + 1} className="h-px p-0" />
                   </tr>
                 );
               }
               return (
                 <tr key={row.label} className="border-t border-border/15 bg-muted/10">
                   <td className="px-4 py-1 pl-10 text-xs text-muted-foreground/70">{row.label}</td>
-                  {scopeData.map((s) => {
+                  {visibleScopeData.map((s) => {
                     const val = s.dynBreakdown ? row.getValue(s) : null;
                     return (
                       <td key={s.type} className="px-4 py-1 text-right font-mono text-xs tabular-nums text-muted-foreground/60">
@@ -212,7 +215,7 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
                 Total Days
                 <span className="ml-1 text-muted-foreground/50">({hpd}h/day, {guys} {guys === 1 ? "guy" : "guys"})</span>
               </td>
-              {scopeData.map(({ type, totalDays }) => (
+              {visibleScopeData.map(({ type, totalDays }) => (
                 <td key={type} className="px-4 py-2 text-right font-mono text-xs tabular-nums text-muted-foreground">
                   {fmt(totalDays)}
                 </td>
@@ -223,7 +226,7 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
                 Total Weeks
                 <span className="ml-1 font-normal text-muted-foreground/50">({dpw}d/wk)</span>
               </td>
-              {scopeData.map(({ type, totalWeeks }) => (
+              {visibleScopeData.map(({ type, totalWeeks }) => (
                 <td key={type} className="px-4 py-2 text-right font-mono text-xs tabular-nums font-semibold">
                   {fmt(totalWeeks)}
                 </td>

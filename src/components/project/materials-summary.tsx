@@ -35,16 +35,19 @@ export function MaterialsSummary({ technologies }: Props) {
     return { type, total, dynBreakdown };
   });
 
-  const anyMaterials = scopeData.some((s) => s.total > 0);
+  // Only show columns for enabled technologies
+  const visibleScopeData = scopeData.filter((s) => s.dynBreakdown !== null);
+
+  const anyMaterials = visibleScopeData.some((s) => s.total > 0);
   if (!anyMaterials) return null;
 
   // Show breakdown chevron whenever any enabled tech exists
-  const hasAnyBreakdown = scopeData.some((s) => s.dynBreakdown !== null);
+  const hasAnyBreakdown = visibleScopeData.some((s) => s.dynBreakdown !== null);
 
   // Collect all unique additional material names across all scopes
   const allAdditionalMaterialNames = Array.from(
     new Set(
-      scopeData.flatMap((s) =>
+      visibleScopeData.flatMap((s) =>
         (s.dynBreakdown?.additionalMaterials ?? []).map(
           (m: { name: string; value: number }) => m.name || "Additional Material"
         )
@@ -83,7 +86,7 @@ export function MaterialsSummary({ technologies }: Props) {
   const visibleRows = breakdownRows.filter((row) => {
     if (row.kind === "divider") return true;
     if (row.alwaysShow) return true;
-    return scopeData.some((s) => s.dynBreakdown && row.getValue(s) > 0);
+    return visibleScopeData.some((s) => s.dynBreakdown && row.getValue(s) > 0);
   });
 
   // Clean up dividers at boundaries or adjacent to each other
@@ -108,7 +111,7 @@ export function MaterialsSummary({ technologies }: Props) {
           <thead>
             <tr className="border-b border-border/40 bg-card">
               <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground min-w-[160px]" />
-              {scopeData.map(({ type }) => (
+              {visibleScopeData.map(({ type }) => (
                 <th
                   key={type}
                   className="px-4 py-2 text-right text-xs font-medium min-w-[120px]"
@@ -140,7 +143,7 @@ export function MaterialsSummary({ technologies }: Props) {
                   Total Equipment &amp; Materials
                 </div>
               </td>
-              {scopeData.map(({ type, total }) => (
+              {visibleScopeData.map(({ type, total }) => (
                 <td
                   key={type}
                   className="px-4 py-2 text-right font-mono text-xs tabular-nums font-semibold"
@@ -155,7 +158,7 @@ export function MaterialsSummary({ technologies }: Props) {
               if (row.kind === "divider") {
                 return (
                   <tr key={`div-${i}`} className="border-t border-border/15">
-                    <td colSpan={scopeData.length + 1} className="h-px p-0" />
+                    <td colSpan={visibleScopeData.length + 1} className="h-px p-0" />
                   </tr>
                 );
               }
@@ -164,7 +167,7 @@ export function MaterialsSummary({ technologies }: Props) {
                   <td className="px-4 py-1 pl-10 text-xs text-muted-foreground/70">
                     {row.label}
                   </td>
-                  {scopeData.map((s) => {
+                  {visibleScopeData.map((s) => {
                     const val = s.dynBreakdown ? row.getValue(s) : null;
                     return (
                       <td
