@@ -152,10 +152,18 @@ export function FinancialReview({ items, techTotals, grandTotal }: Props) {
                     }`}>
                       {isPassThrough ? "—" : formatCurrency(margin)}
                     </td>
-                    <td className={`px-4 py-2 text-right font-mono text-xs tabular-nums ${
-                      isPassThrough ? "text-muted-foreground/50" : marginPct >= 0 ? "text-emerald-500" : "text-destructive"
-                    }`}>
-                      {isPassThrough ? "—" : pct(marginPct)}
+                    <td className="px-4 py-2 text-right">
+                      {isPassThrough ? (
+                        <span className="text-xs text-muted-foreground/40">—</span>
+                      ) : (
+                        <span className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded-full font-mono text-[10px] font-semibold tabular-nums ${
+                          marginPct >= 30 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                          : marginPct >= 15 ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400"
+                          : "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400"
+                        }`}>
+                          {pct(marginPct)}
+                        </span>
+                      )}
                     </td>
                   </tr>
                 );
@@ -184,10 +192,18 @@ export function FinancialReview({ items, techTotals, grandTotal }: Props) {
                           }`}>
                             {cPass ? "—" : formatCurrency(cm)}
                           </td>
-                          <td className={`px-4 py-1.5 text-right font-mono text-xs tabular-nums ${
-                            cPass ? "text-muted-foreground/40" : cmPct >= 0 ? "text-emerald-500/70" : "text-destructive/70"
-                          }`}>
-                            {cPass ? "—" : pct(cmPct)}
+                          <td className="px-4 py-1.5 text-right">
+                            {cPass ? (
+                              <span className="text-xs text-muted-foreground/40">—</span>
+                            ) : (
+                              <span className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded-full font-mono text-[10px] font-semibold tabular-nums ${
+                                cmPct >= 30 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                                : cmPct >= 15 ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400"
+                                : "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400"
+                              }`}>
+                                {pct(cmPct)}
+                              </span>
+                            )}
                           </td>
                         </tr>
                       );
@@ -211,10 +227,14 @@ export function FinancialReview({ items, techTotals, grandTotal }: Props) {
                 }`}>
                   {formatCurrency(totalMargin)}
                 </td>
-                <td className={`px-4 py-2 text-right font-mono text-xs tabular-nums font-bold ${
-                  totalMarginPct >= 0 ? "text-emerald-500" : "text-destructive"
-                }`}>
-                  {pct(totalMarginPct)}
+                <td className="px-4 py-2 text-right">
+                  <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full font-mono text-[11px] font-bold tabular-nums ${
+                    totalMarginPct >= 30 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                    : totalMarginPct >= 15 ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400"
+                    : "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400"
+                  }`}>
+                    {pct(totalMarginPct)}
+                  </span>
                 </td>
               </tr>
             </tfoot>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { TechnologyConfig, TechnologyType } from "@/types";
-import { TECHNOLOGY_LABELS, TECHNOLOGY_DOT } from "@/lib/constants";
+import { TECHNOLOGY_LABELS, TECHNOLOGY_BG, TECHNOLOGY_TINT_DARK } from "@/lib/constants";
 import { formatCurrency } from "@/lib/calculations";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
@@ -111,11 +111,12 @@ export function MaterialsSummary({ technologies }: Props) {
               {scopeData.map(({ type }) => (
                 <th
                   key={type}
-                  className="px-4 py-2 text-right text-xs font-medium text-muted-foreground min-w-[120px]"
+                  className="px-4 py-2 text-right text-xs font-medium min-w-[120px]"
                 >
-                  <div className="flex items-center justify-end gap-1.5">
-                    <div className={`h-1.5 w-1.5 rounded-full ${TECHNOLOGY_DOT[type]}`} />
-                    {TECHNOLOGY_LABELS[type]}
+                  <div className="flex items-center justify-end">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase ${TECHNOLOGY_BG[type]} ${TECHNOLOGY_TINT_DARK[type]}`}>
+                      {TECHNOLOGY_LABELS[type]}
+                    </span>
                   </div>
                 </th>
               ))}

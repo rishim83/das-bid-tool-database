@@ -17,7 +17,13 @@ import { ProjectSidebar, SidebarOverlayPanel, type SidebarPanelId } from "@/comp
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TECHNOLOGY_LABELS, TECHNOLOGY_DOT } from "@/lib/constants";
+import { TECHNOLOGY_LABELS, TECHNOLOGY_DOT, TECHNOLOGY_BG, TECHNOLOGY_TINT_DARK } from "@/lib/constants";
+
+const TECH_ACCENT_HEX: Record<string, string> = {
+  DAS: "#3b82f6",
+  PUBLIC_SAFETY: "#ef4444",
+  ROIP: "#f97316",
+};
 import { formatCurrency } from "@/lib/calculations";
 import { ArrowLeft, Check, FileSpreadsheet, Loader2, AlertCircle } from "lucide-react";
 // ExcelJS loaded dynamically inside downloadDetailedExcel to keep bundle lean
@@ -1022,25 +1028,23 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
                 <div className="kpi-strip px-5 py-3 flex items-center gap-6 flex-wrap">
                   {quotes.map((q) => {
                     const total = techTotals[q.type] ?? q.totalCost;
+                    const isActive = activeTab === q.type;
                     return (
                       <button
                         key={q.type}
                         onClick={() => setActiveTab(q.type)}
-                        className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg transition-all ${
-                          activeTab === q.type
-                            ? "bg-primary/8 ring-1 ring-primary/20"
-                            : "hover:bg-muted/60"
-                        }`}
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all hover:bg-muted/40"
+                        style={isActive ? {
+                          background: `${TECH_ACCENT_HEX[q.type]}0d`,
+                          boxShadow: `inset 0 0 0 1px ${TECH_ACCENT_HEX[q.type]}30`,
+                        } : undefined}
                       >
-                        <div className={`h-2 w-2 rounded-full shrink-0 ${TECHNOLOGY_DOT[q.type]}`} />
-                        <div className="flex flex-col items-start">
-                          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                            {TECHNOLOGY_LABELS[q.type]}
-                          </span>
-                          <span className="text-sm font-semibold font-mono tabular-nums text-foreground leading-tight">
-                            {formatCurrency(total)}
-                          </span>
-                        </div>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase shrink-0 ${TECHNOLOGY_BG[q.type]} ${TECHNOLOGY_TINT_DARK[q.type]}`}>
+                          {TECHNOLOGY_LABELS[q.type]}
+                        </span>
+                        <span className="text-base font-bold font-mono tabular-nums text-foreground leading-tight">
+                          {formatCurrency(total)}
+                        </span>
                       </button>
                     );
                   })}

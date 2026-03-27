@@ -1,9 +1,15 @@
 "use client";
 
 import React, { useState } from "react";
-import type { TechnologyQuote, ColoSite } from "@/types";
+import type { TechnologyQuote, ColoSite, TechnologyType } from "@/types";
 import { formatCurrency } from "@/lib/calculations";
-import { TECHNOLOGY_LABELS, TECHNOLOGY_DOT } from "@/lib/constants";
+import { TECHNOLOGY_LABELS, TECHNOLOGY_DOT, TECHNOLOGY_BG, TECHNOLOGY_TINT, TECHNOLOGY_TINT_DARK } from "@/lib/constants";
+
+const TECH_BORDER: Record<TechnologyType, string> = {
+  DAS: "#3b82f6",
+  PUBLIC_SAFETY: "#ef4444",
+  ROIP: "#f97316",
+};
 import {
   Tooltip,
   TooltipContent,
@@ -73,7 +79,6 @@ export function QuoteTable({
   equipMarkUp = 1,
 }: Props) {
   const tableLabel = TECHNOLOGY_LABELS[quote.type];
-  const dotColor = TECHNOLOGY_DOT[quote.type];
   const [expandedLines, setExpandedLines] = useState<Set<number>>(new Set());
   const isSingleColo = coloSites.length === 1;
 
@@ -92,12 +97,15 @@ export function QuoteTable({
 
   return (
     <TooltipProvider>
-      <div className="border border-border/60 rounded-lg overflow-hidden card-elevated bg-card">
-        <div className="px-4 py-2.5 border-b border-border/50 header-gradient-accent flex items-center gap-2.5">
-          <div className={`h-2 w-2 rounded-full ${dotColor}`} />
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {tableLabel} &mdash; Quote
-          </h3>
+      <div
+        className="border border-border/60 rounded-lg overflow-hidden card-elevated bg-card"
+        style={{ borderLeft: `3px solid ${TECH_BORDER[quote.type]}` }}
+      >
+        <div className={`px-4 py-2.5 border-b flex items-center gap-2.5 ${TECHNOLOGY_TINT[quote.type]} ${TECHNOLOGY_TINT_DARK[quote.type]}`}>
+          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase ${TECHNOLOGY_BG[quote.type]}`}>
+            {tableLabel}
+          </span>
+          <h3 className="text-xs font-semibold tracking-wide opacity-60">Quote</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
