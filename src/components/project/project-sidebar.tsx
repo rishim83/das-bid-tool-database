@@ -344,30 +344,6 @@ export function ProjectSidebar({
                     accent
                   />
 
-                  {/* Quick inline fields */}
-                  <div className="px-3 pt-1 pb-0.5">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50 mb-1">
-                      Labor Hours
-                    </p>
-                  </div>
-                  <InlineField
-                    label="Material Handling"
-                    value={tech.materialHandlingHours ?? 0}
-                    onChange={(v) => onUpdateTechnology({ ...tech, materialHandlingHours: v })}
-                    suffix="hrs"
-                  />
-                  <InlineField
-                    label="Commissioning"
-                    value={tech.commissioningSupport ?? 0}
-                    onChange={(v) => onUpdateTechnology({ ...tech, commissioningSupport: v })}
-                    suffix="hrs"
-                  />
-
-                  <div className="px-3 pt-2 pb-0.5">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50 mb-1">
-                      Extras & Details
-                    </p>
-                  </div>
                   {/* Per-tech Details (panel) */}
                   <PanelTrigger
                     label="Rental, Subs & Materials"
