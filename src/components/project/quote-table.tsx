@@ -98,7 +98,7 @@ export function QuoteTable({
   return (
     <TooltipProvider>
       <div
-        className="w-fit min-w-[50vw] border border-border/60 rounded-lg overflow-hidden card-elevated bg-card"
+        className="w-fit border border-border/60 rounded-lg overflow-hidden card-elevated bg-card"
         style={{ borderLeft: `3px solid ${TECH_BORDER[quote.type]}` }}
       >
         <div className={`px-4 py-2.5 border-b flex items-center gap-2.5 ${TECHNOLOGY_TINT[quote.type]} ${TECHNOLOGY_TINT_DARK[quote.type]}`}>
@@ -108,11 +108,11 @@ export function QuoteTable({
           <h3 className="text-xs font-semibold tracking-wide opacity-60">Quote</h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="text-sm">
+          <table className="text-sm w-full min-w-[50vw]">
             <thead>
               <tr className="border-b border-border/50 bg-card">
                 <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground w-10">#</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground min-w-[200px]">Description</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground w-full min-w-[200px]">Description</th>
                 {!isSingleColo && coloSites.map((colo) => (
                   <th key={colo.id} className="px-3 py-2 text-right text-xs font-medium text-muted-foreground min-w-[120px]">
                     {colo.name}
