@@ -77,9 +77,13 @@ function SidebarSection({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="border-b border-sidebar-border/70">
+    <div className="border-b border-sidebar-border">
       <button
-        className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-sidebar-accent/60 transition-colors text-left"
+        className={`w-full flex items-center gap-2.5 px-3 py-2.5 transition-colors text-left ${
+          open
+            ? "bg-sidebar-accent/50 hover:bg-sidebar-accent/70"
+            : "hover:bg-sidebar-accent/40"
+        }`}
         onClick={() => setOpen((v) => !v)}
       >
         {icon && (
@@ -94,10 +98,14 @@ function SidebarSection({
           <span className="text-[11px] text-muted-foreground/50 truncate max-w-[120px]">{summary}</span>
         )}
         {open
-          ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
-          : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />}
+          ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+          : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 shrink-0" />}
       </button>
-      {open && <div className="pb-2">{children}</div>}
+      {open && (
+        <div className="pb-2 bg-card border-t border-sidebar-border/40">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
@@ -220,9 +228,13 @@ function TechSubSection({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="border-t border-sidebar-border/40">
+    <div className="border-t border-sidebar-border/50">
       <button
-        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-sidebar-accent/40 transition-colors text-left"
+        className={`w-full flex items-center gap-2 px-3 py-2 transition-colors text-left ${
+          open
+            ? "bg-muted/40 hover:bg-muted/60"
+            : "hover:bg-sidebar-accent/40"
+        }`}
         onClick={() => setOpen((v) => !v)}
       >
         <span className="flex-1 text-xs font-medium text-muted-foreground">{title}</span>
@@ -230,10 +242,14 @@ function TechSubSection({
           <span className="text-[11px] text-muted-foreground/50 truncate max-w-[100px] font-mono tabular-nums">{summary}</span>
         )}
         {open
-          ? <ChevronDown className="h-3 w-3 text-muted-foreground/40 shrink-0" />
-          : <ChevronRight className="h-3 w-3 text-muted-foreground/40 shrink-0" />}
+          ? <ChevronDown className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+          : <ChevronRight className="h-3 w-3 text-muted-foreground/30 shrink-0" />}
       </button>
-      {open && <div className="pb-2">{children}</div>}
+      {open && (
+        <div className="pb-2 border-t border-sidebar-border/30 bg-muted/10">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
