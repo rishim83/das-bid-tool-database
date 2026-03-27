@@ -138,9 +138,9 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
   });
 
   return (
-    <div className="border border-border/60 rounded-lg overflow-hidden card-elevated bg-card">
+    <div className="border border-border/60 rounded-lg overflow-hidden card-elevated bg-card" style={{ borderLeft: "2px solid oklch(0.50 0.18 255 / 0.35)" }}>
       <div className="px-3 py-2 border-b border-border/50 header-gradient">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Labor Summary</h3>
+        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-foreground/60">Labor Summary</h3>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">

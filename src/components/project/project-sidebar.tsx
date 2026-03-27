@@ -19,7 +19,13 @@ import {
   DEFAULT_RENTAL_EQUIPMENT,
   DEFAULT_INSTALL_TRAVEL,
 } from "@/types";
-import { TECHNOLOGY_LABELS, TECHNOLOGY_DOT } from "@/lib/constants";
+import { TECHNOLOGY_LABELS, TECHNOLOGY_DOT, TECHNOLOGY_BG, TECHNOLOGY_TINT_DARK } from "@/lib/constants";
+
+const TECH_ACCENT_HEX: Record<string, string> = {
+  DAS: "#3b82f6",
+  PUBLIC_SAFETY: "#ef4444",
+  ROIP: "#f97316",
+};
 import { formatCurrency } from "@/lib/calculations";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -73,11 +79,15 @@ function SidebarSection({
   return (
     <div className="border-b border-sidebar-border/70">
       <button
-        className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-sidebar-accent/60 transition-colors text-left"
+        className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-sidebar-accent/60 transition-colors text-left"
         onClick={() => setOpen((v) => !v)}
       >
-        {icon && <span className="text-muted-foreground/60 shrink-0">{icon}</span>}
-        <span className="flex-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {icon && (
+          <span className="h-5 w-5 flex items-center justify-center rounded-md bg-primary/10 text-primary shrink-0">
+            {icon}
+          </span>
+        )}
+        <span className="flex-1 text-[11px] font-semibold uppercase tracking-wider text-foreground/70">
           {title}
         </span>
         {!open && summary && (
@@ -108,14 +118,18 @@ function PanelTrigger({
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center justify-between px-3 py-2 hover:bg-sidebar-accent/70 transition-colors group ${accent ? "hover:bg-primary/5" : ""}`}
+      className={`w-full flex items-center justify-between px-3 py-2 transition-colors group ${
+        accent
+          ? "bg-primary/5 hover:bg-primary/10 border-y border-primary/10"
+          : "hover:bg-sidebar-accent/70"
+      }`}
     >
-      <span className="text-xs text-foreground/80">{label}</span>
+      <span className={`text-xs font-medium ${accent ? "text-primary/80 group-hover:text-primary" : "text-foreground/80"}`}>{label}</span>
       <div className="flex items-center gap-1.5">
         {summary && (
           <span className="text-[11px] font-mono tabular-nums text-muted-foreground/60">{summary}</span>
         )}
-        <ChevronRight className="h-3 w-3 text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors" />
+        <ChevronRight className={`h-3 w-3 transition-colors ${accent ? "text-primary/40 group-hover:text-primary/70" : "text-muted-foreground/30 group-hover:text-muted-foreground/60"}`} />
       </div>
     </button>
   );
@@ -241,8 +255,7 @@ function TechToggle({
         onChange={(e) => onChange({ ...tech, enabled: e.target.checked })}
         className="h-3.5 w-3.5 rounded border-border/50 accent-primary cursor-pointer shrink-0"
       />
-      <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${TECHNOLOGY_DOT[tech.type]}`} />
-      <span className="text-xs font-medium text-foreground/80">
+      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase shrink-0 ${TECHNOLOGY_BG[tech.type]} ${TECHNOLOGY_TINT_DARK[tech.type]}`}>
         {TECHNOLOGY_LABELS[tech.type]}
       </span>
       <span className={`ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
@@ -700,11 +713,14 @@ export function ProjectSidebar({
             <button
               key={type}
               onClick={() => onTabChange(type)}
-              className={`flex-1 py-1.5 text-[11px] font-medium rounded-t transition-colors ${
+              className={`flex-1 py-1.5 text-[11px] font-semibold rounded-t transition-colors ${
                 activeTab === type
-                  ? "text-foreground border-b-2 border-primary"
+                  ? "text-foreground"
                   : "text-muted-foreground hover:text-foreground"
               }`}
+              style={activeTab === type
+                ? { borderBottom: `2px solid ${TECH_ACCENT_HEX[type]}` }
+                : { borderBottom: "2px solid transparent" }}
             >
               {type === "PUBLIC_SAFETY" ? "PS" : type}
             </button>

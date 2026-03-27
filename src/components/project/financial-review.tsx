@@ -45,12 +45,12 @@ export function FinancialReview({ items, techTotals, grandTotal }: Props) {
   };
 
   return (
-    <div className="border border-border/60 rounded-lg overflow-hidden card-elevated bg-card">
+    <div className="border border-border/60 rounded-lg overflow-hidden card-elevated bg-card" style={{ borderLeft: "2px solid oklch(0.50 0.18 255 / 0.35)" }}>
       <button
         className="w-full px-4 py-2.5 border-b border-border/50 header-gradient flex items-center justify-between hover:bg-muted/20 transition-colors"
         onClick={() => setOpen((v) => !v)}
       >
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-foreground/60">
           Financial Review
         </h3>
         <div className="flex items-center gap-3">
