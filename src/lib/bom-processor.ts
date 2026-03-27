@@ -76,7 +76,7 @@ export function applyBOMMapping(rows: string[][], mapping: BOMColumnMapping): BO
     const qtyStr = get(row, mapping.quantity);
     // Title/section-separator rows have a label in the part number column but no quantity — skip them
     if (mapping.quantity && !qtyStr) continue;
-    const quantity = parseNum(qtyStr) || 1;
+    const quantity = parseNum(qtyStr);
 
     items.push({
       partNumber,
