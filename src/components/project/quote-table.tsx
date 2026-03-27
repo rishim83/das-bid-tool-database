@@ -98,7 +98,7 @@ export function QuoteTable({
   return (
     <TooltipProvider>
       <div
-        className="border border-border/60 rounded-lg overflow-hidden card-elevated bg-card"
+        className="w-fit border border-border/60 rounded-lg overflow-hidden card-elevated bg-card"
         style={{ borderLeft: `3px solid ${TECH_BORDER[quote.type]}` }}
       >
         <div className={`px-4 py-2.5 border-b flex items-center gap-2.5 ${TECHNOLOGY_TINT[quote.type]} ${TECHNOLOGY_TINT_DARK[quote.type]}`}>
@@ -108,7 +108,7 @@ export function QuoteTable({
           <h3 className="text-xs font-semibold tracking-wide opacity-60">Quote</h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="text-sm">
             <thead>
               <tr className="border-b border-border/50 bg-card">
                 <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground w-10">#</th>
