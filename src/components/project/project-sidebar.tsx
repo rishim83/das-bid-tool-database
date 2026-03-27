@@ -28,9 +28,15 @@ import {
   ChevronLeft,
   ChevronsUpDown,
   MapPin,
-  SlidersHorizontal,
+  DollarSign,
+  Clock,
+  Plane,
+  Car,
+  Clipboard,
+  Wrench,
   PackageOpen,
   X,
+  SlidersHorizontal,
 } from "lucide-react";
 import { ParametersPanel } from "./parameters-panel";
 import { ColoManager } from "./colo-manager";
@@ -147,6 +153,41 @@ function InlineField({
   );
 }
 
+// ─── Checkbox field ─────────────────────────────────────────────
+
+function CheckboxField({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <label className="flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-sidebar-accent/50 transition-colors">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="h-3.5 w-3.5 rounded border-border/50 accent-primary cursor-pointer shrink-0"
+      />
+      <span className="text-xs text-foreground/80">{label}</span>
+    </label>
+  );
+}
+
+// ─── Read-only display row ───────────────────────────────────────
+
+function DisplayRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between px-3 py-1.5 bg-muted/20">
+      <span className="text-xs text-muted-foreground/70">{label}</span>
+      <span className="text-xs font-mono font-semibold tabular-nums">{value}</span>
+    </div>
+  );
+}
+
 // ─── Tech enable toggle ──────────────────────────────────────────
 
 function TechToggle({
@@ -183,10 +224,19 @@ function TechToggle({
 
 interface Props {
   project: Project;
+  psd: ProjectSpecificDetails;
+  fullSchedule: Schedule;
+  pmTravelCalculated: PMTravelCalculated;
+  installTravelCalc: InstallTravelCalculated | null;
   activeTab: TechnologyType;
   isNTI: boolean;
+  onUpdateInputParameters: (p: InputParameters) => void;
+  onUpdateSchedule: (s: Schedule) => void;
+  onUpdatePMTravel: (t: PMTravelEstimate) => void;
+  onUpdateInstallTravel: (t: InstallTravelConfig) => void;
   onUpdateTechnology: (t: TechnologyConfig) => void;
   onUpdateProjectMeta: (patch: Partial<Project>) => void;
+  onUpdateProjectSpecificDetails: (psd: ProjectSpecificDetails) => void;
   onTabChange: (tab: TechnologyType) => void;
   onOpenPanel: (id: SidebarPanelId) => void;
 }
@@ -195,10 +245,19 @@ const TECH_TYPES: TechnologyType[] = ["DAS", "PUBLIC_SAFETY", "ROIP"];
 
 export function ProjectSidebar({
   project,
+  psd,
+  fullSchedule,
+  pmTravelCalculated,
+  installTravelCalc,
   activeTab,
   isNTI,
+  onUpdateInputParameters,
+  onUpdateSchedule,
+  onUpdatePMTravel,
+  onUpdateInstallTravel,
   onUpdateTechnology,
   onUpdateProjectMeta,
+  onUpdateProjectSpecificDetails,
   onTabChange,
   onOpenPanel,
 }: Props) {
@@ -253,17 +312,287 @@ export function ProjectSidebar({
         />
       </SidebarSection>
 
-      {/* ── PRICING PARAMETERS (NC only) ─────────────── */}
+      {/* ── MARK UPS (NC only) ───────────────────────── */}
       {!isNTI && (
         <SidebarSection
-          title="Parameters"
-          icon={<SlidersHorizontal className="h-3.5 w-3.5" />}
-          summary={paramSummary}
+          title="Mark Ups"
+          icon={<DollarSign className="h-3.5 w-3.5" />}
+          summary={`${Math.round((ip.markUp - 1) * 100)}% equip`}
         >
-          <PanelTrigger
-            label="Rates, Markup & Factors"
-            summary={paramSummary}
-            onClick={() => onOpenPanel("parameters")}
+          <InlineField
+            label="Equipment Markup"
+            value={Math.round((ip.markUp - 1) * 10000) / 100}
+            onChange={(v) => onUpdateInputParameters({ ...ip, markUp: 1 + v / 100 })}
+            suffix="%"
+          />
+          <InlineField
+            label="Sub Markup"
+            value={Math.round(((ip.subMarkUp ?? 1.1) - 1) * 10000) / 100}
+            onChange={(v) => onUpdateInputParameters({ ...ip, subMarkUp: 1 + v / 100 })}
+            suffix="%"
+          />
+          <InlineField
+            label="Material Contingency"
+            value={Math.round((ip.materialSafety - 1) * 10000) / 100}
+            onChange={(v) => onUpdateInputParameters({ ...ip, materialSafety: 1 + v / 100 })}
+            suffix="%"
+          />
+          <InlineField
+            label="Labor Contingency"
+            value={Math.round((ip.laborSafety - 1) * 10000) / 100}
+            onChange={(v) => onUpdateInputParameters({ ...ip, laborSafety: 1 + v / 100 })}
+            suffix="%"
+          />
+          <InlineField
+            label="Travel / Indirects"
+            value={Math.round(((ip.travelIndirectMarkup ?? 1.23) - 1) * 10000) / 100}
+            onChange={(v) => onUpdateInputParameters({ ...ip, travelIndirectMarkup: 1 + v / 100 })}
+            suffix="%"
+          />
+          <InlineField
+            label="Tax"
+            value={ip.taxPercent ?? 0}
+            onChange={(v) => onUpdateInputParameters({ ...ip, taxPercent: v })}
+            suffix="%"
+          />
+        </SidebarSection>
+      )}
+
+      {/* ── LABOR & SCHEDULE (NC only) ────────────────── */}
+      {!isNTI && (
+        <SidebarSection
+          title="Labor & Schedule"
+          icon={<Clock className="h-3.5 w-3.5" />}
+          summary={`${fullSchedule.numberOfGuys} techs · $${ip.hourlyRate ?? 0}/hr`}
+        >
+          <InlineField
+            label="# of Techs"
+            value={fullSchedule.numberOfGuys}
+            onChange={(v) => onUpdateSchedule({ ...fullSchedule, numberOfGuys: Math.max(1, Math.round(v)) })}
+            step="1"
+          />
+          <InlineField
+            label="Hours / Day"
+            value={ip.hoursPerDay ?? 8}
+            onChange={(v) => onUpdateInputParameters({ ...ip, hoursPerDay: v })}
+          />
+          <InlineField
+            label="Days / Week"
+            value={ip.daysPerWeek ?? 5}
+            onChange={(v) => onUpdateInputParameters({ ...ip, daysPerWeek: v })}
+          />
+          <InlineField
+            label="PM on Job"
+            value={Math.round((ip.pmOnJob ?? 0.1) * 100)}
+            onChange={(v) => onUpdateInputParameters({ ...ip, pmOnJob: v / 100 })}
+            suffix="%"
+          />
+          <InlineField
+            label="Admin"
+            value={psd.extras?.adminHours ?? 15}
+            onChange={(v) => onUpdateProjectSpecificDetails({ ...psd, extras: { ...psd.extras, adminHours: v } })}
+            suffix="%"
+          />
+          <div className="px-3 pt-2 pb-0.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40">Install Rate</p>
+          </div>
+          <InlineField
+            label="Buy"
+            value={ip.buyHourlyRate ?? 55}
+            onChange={(v) => onUpdateInputParameters({ ...ip, buyHourlyRate: v })}
+            prefix="$"
+          />
+          <InlineField
+            label="Sell"
+            value={ip.hourlyRate ?? 0}
+            onChange={(v) => onUpdateInputParameters({ ...ip, hourlyRate: v })}
+            prefix="$"
+          />
+          <div className="px-3 pt-2 pb-0.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40">PM Rate</p>
+          </div>
+          <InlineField
+            label="Buy"
+            value={ip.buyPMHourlyRate ?? 95}
+            onChange={(v) => onUpdateInputParameters({ ...ip, buyPMHourlyRate: v })}
+            prefix="$"
+          />
+          <InlineField
+            label="Sell"
+            value={ip.pmHourlyRate ?? 0}
+            onChange={(v) => onUpdateInputParameters({ ...ip, pmHourlyRate: v })}
+            prefix="$"
+          />
+        </SidebarSection>
+      )}
+
+      {/* ── PM TRAVEL (NC only) ───────────────────────── */}
+      {!isNTI && (
+        <SidebarSection
+          title="PM Travel"
+          icon={<Plane className="h-3.5 w-3.5" />}
+          summary={pmTravelCalculated.totalPerTrip > 0 ? `${formatCurrency(pmTravelCalculated.totalPerTrip)}/trip` : "Not set"}
+        >
+          <InlineField
+            label="Days / Trip"
+            value={project.pmTravel.daysPerTrip}
+            onChange={(v) => onUpdatePMTravel({ ...project.pmTravel, daysPerTrip: v })}
+            step="1"
+          />
+          <InlineField
+            label="Flight"
+            value={project.pmTravel.flight}
+            onChange={(v) => onUpdatePMTravel({ ...project.pmTravel, flight: v })}
+            prefix="$"
+          />
+          <InlineField
+            label="Hotel / Day"
+            value={project.pmTravel.hotelPerDay}
+            onChange={(v) => onUpdatePMTravel({ ...project.pmTravel, hotelPerDay: v })}
+            prefix="$"
+          />
+          <InlineField
+            label="Car Rental / Day"
+            value={project.pmTravel.carRentalPerDay}
+            onChange={(v) => onUpdatePMTravel({ ...project.pmTravel, carRentalPerDay: v })}
+            prefix="$"
+          />
+          <InlineField
+            label="Per Diem / Day"
+            value={project.pmTravel.perDiemPerDay}
+            onChange={(v) => onUpdatePMTravel({ ...project.pmTravel, perDiemPerDay: v })}
+            prefix="$"
+          />
+          {pmTravelCalculated.totalPerTrip > 0 && (
+            <DisplayRow label="Total / Trip" value={formatCurrency(pmTravelCalculated.totalPerTrip)} />
+          )}
+        </SidebarSection>
+      )}
+
+      {/* ── INSTALL TRAVEL (NC only) ──────────────────── */}
+      {!isNTI && (
+        <SidebarSection
+          title="Install Travel"
+          icon={<Car className="h-3.5 w-3.5" />}
+          summary={installTravelCalc ? formatCurrency(installTravelCalc.markedUpTotal) : "Not set"}
+        >
+          {(() => {
+            const it = project.installTravel ?? DEFAULT_INSTALL_TRAVEL;
+            return (
+              <>
+                <InlineField
+                  label="Travel %"
+                  value={it.travelPercent}
+                  onChange={(v) => onUpdateInstallTravel({ ...it, travelPercent: v })}
+                  suffix="%"
+                />
+                <InlineField
+                  label="Per Diem / Day"
+                  value={it.perDiemRate}
+                  onChange={(v) => onUpdateInstallTravel({ ...it, perDiemRate: v })}
+                  prefix="$"
+                />
+                <InlineField
+                  label="Airfare / Trip"
+                  value={it.airfarePricePerTrip}
+                  onChange={(v) => onUpdateInstallTravel({ ...it, airfarePricePerTrip: v })}
+                  prefix="$"
+                />
+                <InlineField
+                  label="Lodging / Night"
+                  value={it.lodgingRatePerNight}
+                  onChange={(v) => onUpdateInstallTravel({ ...it, lodgingRatePerNight: v })}
+                  prefix="$"
+                />
+                <InlineField
+                  label="Fuel (flat)"
+                  value={it.fuel}
+                  onChange={(v) => onUpdateInstallTravel({ ...it, fuel: v })}
+                  prefix="$"
+                />
+                {installTravelCalc && (
+                  <DisplayRow label="Total (w/ markup)" value={formatCurrency(installTravelCalc.markedUpTotal)} />
+                )}
+              </>
+            );
+          })()}
+        </SidebarSection>
+      )}
+
+      {/* ── PROJECT DETAILS (NC only) ─────────────────── */}
+      {!isNTI && (
+        <SidebarSection
+          title="Project Details"
+          icon={<Clipboard className="h-3.5 w-3.5" />}
+          summary={[psd.jHooks && "J Hooks", psd.badgingSafety && "Badging", psd.cores.enabled && "Cores"].filter(Boolean).join(" · ") || "None"}
+        >
+          <CheckboxField
+            label="J Hooks for Pathway"
+            checked={psd.jHooks}
+            onChange={(v) => onUpdateProjectSpecificDetails({ ...psd, jHooks: v })}
+          />
+          <CheckboxField
+            label="Badging / Safety"
+            checked={psd.badgingSafety}
+            onChange={(v) => onUpdateProjectSpecificDetails({ ...psd, badgingSafety: v })}
+          />
+          <CheckboxField
+            label="Exclude Materials"
+            checked={!!psd.extras?.excludeMaterials}
+            onChange={(v) => onUpdateProjectSpecificDetails({ ...psd, extras: { ...psd.extras, excludeMaterials: v } })}
+          />
+          <div className="flex items-center gap-2 px-3 py-1.5">
+            <input
+              type="checkbox"
+              checked={psd.cores.enabled}
+              onChange={(e) => onUpdateProjectSpecificDetails({ ...psd, cores: { ...psd.cores, enabled: e.target.checked } })}
+              className="h-3.5 w-3.5 rounded border-border/50 accent-primary cursor-pointer shrink-0"
+            />
+            <span className="text-xs text-foreground/80 flex-1">Cores</span>
+            {psd.cores.enabled && (
+              <Input
+                type="number"
+                step="1"
+                value={psd.cores.count}
+                onChange={(e) => onUpdateProjectSpecificDetails({ ...psd, cores: { ...psd.cores, count: parseFloat(e.target.value) || 0 } })}
+                className="h-7 w-16 bg-input/40 border-border/50 text-right text-xs font-mono tabular-nums rounded-md"
+              />
+            )}
+          </div>
+        </SidebarSection>
+      )}
+
+      {/* ── EXTRAS (NC only) ──────────────────────────── */}
+      {!isNTI && (
+        <SidebarSection
+          title="Extras"
+          icon={<Wrench className="h-3.5 w-3.5" />}
+          summary={[
+            psd.extras?.shuttleServices && "Shuttle",
+            psd.extras?.stretchAndFlex && "Stretch",
+            psd.extras?.liftSpotters && "Lift",
+          ].filter(Boolean).join(" · ") || "None"}
+        >
+          <CheckboxField
+            label="Shuttle Services"
+            checked={!!psd.extras?.shuttleServices}
+            onChange={(v) => onUpdateProjectSpecificDetails({ ...psd, extras: { ...psd.extras, shuttleServices: v } })}
+          />
+          <CheckboxField
+            label="Stretch & Flex"
+            checked={!!psd.extras?.stretchAndFlex}
+            onChange={(v) => onUpdateProjectSpecificDetails({ ...psd, extras: { ...psd.extras, stretchAndFlex: v } })}
+          />
+          <CheckboxField
+            label="Lift Spotters"
+            checked={!!psd.extras?.liftSpotters}
+            onChange={(v) => onUpdateProjectSpecificDetails({ ...psd, extras: { ...psd.extras, liftSpotters: v } })}
+          />
+          <InlineField
+            label="Composite Cleanup"
+            value={Number(psd.extras?.compositeCleanup ?? 0)}
+            onChange={(v) => onUpdateProjectSpecificDetails({ ...psd, extras: { ...psd.extras, compositeCleanup: v } })}
+            suffix="hrs"
           />
         </SidebarSection>
       )}
