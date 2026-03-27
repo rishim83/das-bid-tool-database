@@ -100,7 +100,7 @@ export function MaterialsSummary({ technologies }: Props) {
   });
 
   return (
-    <div className="w-fit border border-border/60 rounded-lg overflow-hidden card-elevated bg-card" style={{ borderLeft: "2px solid oklch(0.50 0.18 255 / 0.35)" }}>
+    <div className="w-fit min-w-[50vw] border border-border/60 rounded-lg overflow-hidden card-elevated bg-card" style={{ borderLeft: "2px solid oklch(0.50 0.18 255 / 0.35)" }}>
       <div className="px-3 py-2 border-b border-border/50 header-gradient">
         <h3 className="text-[11px] font-semibold uppercase tracking-wider text-foreground/60">
           Materials Summary
