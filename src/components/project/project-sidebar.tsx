@@ -272,6 +272,7 @@ interface Props {
   onUpdateInstallTravel: (t: InstallTravelConfig) => void;
   onUpdateTechnology: (t: TechnologyConfig) => void;
   onUpdateProjectMeta: (patch: Partial<Project>) => void;
+  onUpdateColoSites: (sites: ColoSite[]) => void;
   onUpdateProjectSpecificDetails: (psd: ProjectSpecificDetails) => void;
   onTabChange: (tab: TechnologyType) => void;
   onOpenPanel: (id: SidebarPanelId) => void;
@@ -291,6 +292,7 @@ export function ProjectSidebar({
   onUpdateSchedule,
   onUpdatePMTravel,
   onUpdateInstallTravel,
+  onUpdateColoSites,
   onUpdateTechnology,
   onUpdateProjectMeta,
   onUpdateProjectSpecificDetails,
@@ -341,11 +343,32 @@ export function ProjectSidebar({
         summary={coloSummary}
         defaultOpen={colos.length === 0}
       >
-        <PanelTrigger
-          label={coloSummary === "No sites" ? "Add colo sites…" : coloSummary}
-          summary={colos.length > 0 ? `${colos.length} site${colos.length !== 1 ? "s" : ""}` : undefined}
-          onClick={() => onOpenPanel("colos")}
-        />
+        <div className="px-3 pt-1 pb-2 flex flex-col gap-1.5">
+          {colos.map((site) => (
+            <div key={site.id} className="flex items-center gap-1">
+              <Input
+                value={site.name}
+                onChange={(e) => onUpdateColoSites(colos.map((s) => s.id === site.id ? { ...s, name: e.target.value } : s))}
+                className="h-7 flex-1 text-xs bg-input/40 border-border/50 rounded-md"
+              />
+              {colos.length > 1 && (
+                <button
+                  onClick={() => onUpdateColoSites(colos.filter((s) => s.id !== site.id))}
+                  className="h-5 w-5 flex items-center justify-center text-muted-foreground/40 hover:text-destructive transition-colors shrink-0"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          ))}
+          <Button
+            variant="ghost" size="sm"
+            onClick={() => onUpdateColoSites([...colos, { id: uuid(), name: `COLO ${colos.length}` }])}
+            className="h-6 text-xs text-muted-foreground border border-dashed border-border/50 hover:border-primary/40 hover:text-primary transition-colors w-full"
+          >
+            <Plus className="h-3 w-3 mr-1" /> Add COLO
+          </Button>
+        </div>
       </SidebarSection>
 
       {/* ── MARK UPS (NC only) ───────────────────────── */}

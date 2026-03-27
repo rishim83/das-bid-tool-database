@@ -892,6 +892,7 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
     onUpdateSchedule: updateSchedule,
     onUpdatePMTravel: updatePMTravel,
     onUpdateInstallTravel: updateInstallTravel,
+    onUpdateColoSites: updateColoSites,
     onUpdateTechnology: updateTechnology,
     onUpdateProjectMeta: updateProjectMeta,
     onUpdateProjectSpecificDetails: updateProjectSpecificDetails,
