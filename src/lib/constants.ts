@@ -84,19 +84,39 @@ export const TECHNOLOGY_LABELS: Record<TechnologyType, string> = {
 };
 
 export const TECHNOLOGY_COLORS: Record<TechnologyType, string> = {
-  DAS: "bg-blue-500",
-  PUBLIC_SAFETY: "bg-emerald-500",
-  ROIP: "bg-cyan-500",
+  DAS: "bg-blue-600",
+  PUBLIC_SAFETY: "bg-red-600",
+  ROIP: "bg-orange-500",
 };
 
 export const TECHNOLOGY_ACCENT: Record<TechnologyType, string> = {
-  DAS: "text-blue-400",
-  PUBLIC_SAFETY: "text-emerald-400",
-  ROIP: "text-cyan-400",
+  DAS: "text-blue-600",
+  PUBLIC_SAFETY: "text-red-600",
+  ROIP: "text-orange-500",
 };
 
 export const TECHNOLOGY_DOT: Record<TechnologyType, string> = {
-  DAS: "bg-blue-400 shadow-[0_0_6px_oklch(0.62_0.18_255/0.4)]",
-  PUBLIC_SAFETY: "bg-emerald-400 shadow-[0_0_6px_oklch(0.62_0.17_162/0.4)]",
-  ROIP: "bg-cyan-400 shadow-[0_0_6px_oklch(0.70_0.12_200/0.4)]",
+  DAS: "bg-blue-500 shadow-[0_0_6px_oklch(0.55_0.22_255/0.45)]",
+  PUBLIC_SAFETY: "bg-red-500 shadow-[0_0_6px_oklch(0.55_0.22_29/0.45)]",
+  ROIP: "bg-orange-400 shadow-[0_0_6px_oklch(0.72_0.19_55/0.45)]",
+};
+
+/* Solid background color for tech badges / headers (Tailwind classes) */
+export const TECHNOLOGY_BG: Record<TechnologyType, string> = {
+  DAS: "bg-blue-600 text-white",
+  PUBLIC_SAFETY: "bg-red-600 text-white",
+  ROIP: "bg-orange-500 text-white",
+};
+
+/* Subtle tinted background for tech-tinted rows / borders */
+export const TECHNOLOGY_TINT: Record<TechnologyType, string> = {
+  DAS: "bg-blue-50 border-blue-200 text-blue-700",
+  PUBLIC_SAFETY: "bg-red-50 border-red-200 text-red-700",
+  ROIP: "bg-orange-50 border-orange-200 text-orange-700",
+};
+
+export const TECHNOLOGY_TINT_DARK: Record<TechnologyType, string> = {
+  DAS: "dark:bg-blue-950/30 dark:border-blue-800/40 dark:text-blue-300",
+  PUBLIC_SAFETY: "dark:bg-red-950/30 dark:border-red-800/40 dark:text-red-300",
+  ROIP: "dark:bg-orange-950/30 dark:border-orange-800/40 dark:text-orange-300",
 };

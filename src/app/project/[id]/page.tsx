@@ -7,18 +7,13 @@ import { useProject } from "@/hooks/use-project";
 import type { SaveStatus } from "@/hooks/use-project";
 import type { Project, TechnologyConfig, TechnologyType } from "@/types";
 import { DEFAULT_PROJECT_SPECIFIC_DETAILS, DEFAULT_PROJECT_EXTRAS, DEFAULT_RENTAL_EQUIPMENT, DEFAULT_INPUT_PARAMETERS, DEFAULT_INSTALL_TRAVEL } from "@/types";
-import { ParametersPanel } from "@/components/project/parameters-panel";
-import { ColoManager } from "@/components/project/colo-manager";
-import { InputValuesTable } from "@/components/project/input-values-table";
 import { QuoteTable } from "@/components/project/quote-table";
-import { ProjectSummary } from "@/components/project/project-summary";
 import { FinancialReview, type FinancialItem } from "@/components/project/financial-review";
 import { LaborSummary } from "@/components/project/labor-summary";
 import { MaterialsSummary } from "@/components/project/materials-summary";
-import { PerTechDetailsCard } from "@/components/project/per-tech-details-card";
 import { AIEstimateDialog } from "@/components/project/ai-estimate-dialog";
-import { BomImportDialog } from "@/components/project/bom-import-dialog";
 import { NTIReportPreview } from "@/components/project/nti-report-preview";
+import { ProjectSidebar, SidebarOverlayPanel, type SidebarPanelId } from "@/components/project/project-sidebar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -125,6 +120,8 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
   const psd = rawPsd.extras ? rawPsd : { ...rawPsd, extras: { ...DEFAULT_PROJECT_EXTRAS } };
 
   const [activeTab, setActiveTab] = useState<TechnologyType>("DAS");
+  const [activePanel, setActivePanel] = useState<SidebarPanelId | null>(null);
+  const SIDEBAR_WIDTH = 288;
 
   // Per-tech rental/sub helpers
   const travelMarkupMultiplier = project.inputParameters.travelIndirectMarkup ?? 1.23;
@@ -882,14 +879,55 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
 
   const isNTI = project.bidType === "nti";
 
+  // Shared sidebar props
+  const sidebarProps = {
+    project,
+    psd,
+    fullSchedule,
+    pmTravelCalculated,
+    installTravelCalc,
+    activeTab,
+    isNTI,
+    activePanel,
+    onUpdateInputParameters: updateInputParameters,
+    onUpdateSchedule: updateSchedule,
+    onUpdatePMTravel: updatePMTravel,
+    onUpdateInstallTravel: updateInstallTravel,
+    onUpdateColoSites: updateColoSites,
+    onUpdateTechnology: updateTechnology,
+    onUpdateProjectMeta: updateProjectMeta,
+    onUpdateProjectSpecificDetails: updateProjectSpecificDetails,
+    onTabChange: (tab: TechnologyType) => setActiveTab(tab),
+    onOpenPanel: (id: SidebarPanelId) => setActivePanel(id),
+    onClosePanel: () => setActivePanel(null),
+  };
+
+  const overlayProps = {
+    project,
+    psd,
+    fullSchedule,
+    pmTravelCalculated,
+    installTravelCalc,
+    onUpdateInputParameters: updateInputParameters,
+    onUpdateSchedule: updateSchedule,
+    onUpdatePMTravel: updatePMTravel,
+    onUpdateInstallTravel: updateInstallTravel,
+    onUpdateColoSites: updateColoSites,
+    onUpdateTechnology: updateTechnology,
+    onUpdateProjectSpecificDetails: updateProjectSpecificDetails,
+    onClose: () => setActivePanel(null),
+    sidebarWidth: SIDEBAR_WIDTH,
+  };
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b border-border/60 bg-background/85 backdrop-blur-xl backdrop-saturate-150 sticky top-0 z-10">
-        <div className="max-w-[1600px] mx-auto px-5 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+    <div className="flex flex-col h-screen bg-background overflow-hidden">
+
+      {/* ── Header ────────────────────────────────────────────────── */}
+      <header className="shrink-0 border-b border-border/60 bg-card/90 backdrop-blur-md z-30">
+        <div className="px-4 py-2 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
             <Link href="/">
-              <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground">
+              <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground px-2">
                 <ArrowLeft className="h-3 w-3 mr-1" /> Back
               </Button>
             </Link>
@@ -897,13 +935,13 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
             <Input
               value={project.name}
               onChange={(e) => updateProjectMeta({ name: e.target.value })}
-              className="h-7 w-56 text-sm font-medium border-transparent hover:border-border/60 bg-transparent"
+              className="h-7 w-48 text-sm font-semibold border-transparent hover:border-border/60 bg-transparent focus:bg-background"
             />
             <Input
               value={project.client}
               onChange={(e) => updateProjectMeta({ client: e.target.value })}
-              placeholder="Client..."
-              className="h-7 w-40 text-xs text-muted-foreground border-transparent hover:border-border/60 bg-transparent"
+              placeholder="Client…"
+              className="h-7 w-36 text-xs text-muted-foreground border-transparent hover:border-border/60 bg-transparent focus:bg-background"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -924,222 +962,174 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
               </button>
             </div>
             {!isNTI && <AIEstimateDialog project={project} onApply={applyBulkUpdate} />}
-            <Button onClick={() => { (isNTI ? downloadNTIExcel() : downloadDetailedExcel()).catch(console.error); }} size="sm" variant="outline" className="h-7 text-xs">
+            <Button
+              onClick={() => { (isNTI ? downloadNTIExcel() : downloadDetailedExcel()).catch(console.error); }}
+              size="sm" variant="outline" className="h-7 text-xs"
+            >
               <FileSpreadsheet className="h-3 w-3 mr-1" /> Export
             </Button>
             <ThemeToggle />
           </div>
         </div>
+      </header>
+
+      {/* ── Body: Sidebar + Main ──────────────────────────────────── */}
+      <div className="flex flex-1 min-h-0">
+
+        {/* ── Sidebar ──────────────────────────── */}
+        <aside
+          className="shrink-0 overflow-y-auto sidebar-bg"
+          style={{ width: SIDEBAR_WIDTH }}
+        >
+          <ProjectSidebar {...sidebarProps} />
+        </aside>
+
+        {/* ── Main area ────────────────────────── */}
+        <main className="flex-1 overflow-y-auto bg-background">
+
+          {isNTI ? (
+            /* ── NTI main ─────────────────────────────── */
+            <div className="p-5 space-y-4">
+              {/* NTI tech tabs — report preview only */}
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TechnologyType)}>
+                <TabsList className="h-8 p-0.5 bg-muted/60 rounded-lg w-auto inline-flex gap-0.5 border border-border/30">
+                  {(["DAS", "PUBLIC_SAFETY", "ROIP"] as TechnologyType[]).map((type) => (
+                    <TabsTrigger key={type} value={type} className="h-7 px-4 rounded-md text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                      {TECHNOLOGY_LABELS[type]}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+                {(["DAS", "PUBLIC_SAFETY", "ROIP"] as TechnologyType[]).map((type) => {
+                  const tech = project.technologies.find((t) => t.type === type);
+                  if (!tech) return null;
+                  return (
+                    <TabsContent key={type} value={type} className="mt-3">
+                      <NTIReportPreview
+                        tech={tech}
+                        coloSites={project.coloSites}
+                        materialContingency={project.ntiMaterialContingency ?? 0}
+                        laborContingency={project.ntiLaborContingency ?? 0}
+                      />
+                    </TabsContent>
+                  );
+                })}
+              </Tabs>
+            </div>
+
+          ) : (
+            /* ── NC main ──────────────────────────────── */
+            <>
+              {/* KPI strip — per-tech totals */}
+              {quotes.length > 0 && (
+                <div className="kpi-strip px-5 py-3 flex items-center gap-6 flex-wrap">
+                  {quotes.map((q) => {
+                    const total = techTotals[q.type] ?? q.totalCost;
+                    return (
+                      <button
+                        key={q.type}
+                        onClick={() => setActiveTab(q.type)}
+                        className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg transition-all ${
+                          activeTab === q.type
+                            ? "bg-primary/8 ring-1 ring-primary/20"
+                            : "hover:bg-muted/60"
+                        }`}
+                      >
+                        <div className={`h-2 w-2 rounded-full shrink-0 ${TECHNOLOGY_DOT[q.type]}`} />
+                        <div className="flex flex-col items-start">
+                          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                            {TECHNOLOGY_LABELS[q.type]}
+                          </span>
+                          <span className="text-sm font-semibold font-mono tabular-nums text-foreground leading-tight">
+                            {formatCurrency(total)}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                  <div className="ml-auto flex flex-col items-end">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Grand Total</span>
+                    <span className="text-lg font-bold font-mono tabular-nums text-foreground leading-tight">
+                      {formatCurrency(grandTotal)}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Quote tabs */}
+              <div className="p-5 space-y-5">
+                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TechnologyType)}>
+                  <TabsList className="h-8 p-0.5 bg-muted/60 rounded-lg w-auto inline-flex gap-0.5 border border-border/30">
+                    {(["DAS", "PUBLIC_SAFETY", "ROIP"] as TechnologyType[]).map((type) => {
+                      const q = quotes.find((q) => q.type === type);
+                      return (
+                        <TabsTrigger
+                          key={type}
+                          value={type}
+                          className="h-7 px-4 rounded-md text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                        >
+                          <div className={`h-1.5 w-1.5 rounded-full mr-1.5 ${TECHNOLOGY_DOT[type]}`} />
+                          {TECHNOLOGY_LABELS[type]}
+                          {q && (
+                            <span className="ml-2 text-[10px] font-mono text-muted-foreground tabular-nums">
+                              {formatCurrency(techTotals[type] ?? q.totalCost)}
+                            </span>
+                          )}
+                        </TabsTrigger>
+                      );
+                    })}
+                  </TabsList>
+
+                  {(["DAS", "PUBLIC_SAFETY", "ROIP"] as TechnologyType[]).map((type) => {
+                    const tech = project.technologies.find((t) => t.type === type);
+                    const quote = quotes.find((q) => q.type === type);
+                    if (!tech || !quote) return null;
+                    const techRentalMarkup = tech.enabled ? getTechRentalMarkup(tech) : 0;
+                    const techSubMarkup = tech.enabled ? getTechSubMarkup(tech) : 0;
+                    return (
+                      <TabsContent key={type} value={type} className="mt-3">
+                        <QuoteTable
+                          quote={quote}
+                          coloSites={project.coloSites}
+                          rentalMarkupCost={techRentalMarkup}
+                          adminPercent={adminPercent}
+                          subContractorTotal={techSubMarkup}
+                          taxPercent={taxPercent}
+                          installTravelActive={installTravelCalc !== null}
+                          materialSafety={project.inputParameters.materialSafety ?? 1}
+                          equipMarkUp={project.inputParameters.markUp ?? 1}
+                        />
+                      </TabsContent>
+                    );
+                  })}
+                </Tabs>
+
+                {/* Output summaries */}
+                <LaborSummary
+                  technologies={project.technologies}
+                  hoursPerDay={project.inputParameters.hoursPerDay ?? 8}
+                  daysPerWeek={project.inputParameters.daysPerWeek ?? 5}
+                  numberOfGuys={project.schedule.numberOfGuys}
+                  projectSpecificDetails={psd}
+                  laborSafety={project.inputParameters.laborSafety ?? 1}
+                />
+                <MaterialsSummary technologies={project.technologies} />
+                {quotes.length > 0 && (
+                  <FinancialReview
+                    items={financialItems}
+                    techTotals={techTotals}
+                    grandTotal={grandTotal}
+                  />
+                )}
+                <div className="h-4" />
+              </div>
+            </>
+          )}
+        </main>
       </div>
 
-      {isNTI ? (
-        /* ── NTI Bid Layout ───────────────────────────────────────────── */
-        <div className="max-w-[1600px] mx-auto px-5 py-5 space-y-4">
-          {/* COLO Sites */}
-          <div className="border border-border/60 rounded-lg px-4 py-2.5 bg-card/50">
-            <ColoManager coloSites={project.coloSites} onChange={updateColoSites} />
-          </div>
-
-          {/* NTI Contingency Inputs */}
-          <div className="border border-border/60 rounded-lg bg-card px-4 py-3 flex items-center gap-6 flex-wrap">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Contingency</span>
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-muted-foreground whitespace-nowrap">Material</label>
-              <div className="flex items-center gap-1">
-                <Input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  value={project.ntiMaterialContingency ?? 0}
-                  onChange={(e) => updateProjectMeta({ ntiMaterialContingency: parseFloat(e.target.value) || 0 })}
-                  className="h-7 w-20 bg-input/40 border-border/50 text-right text-sm font-mono tabular-nums rounded-md"
-                />
-                <span className="text-xs text-muted-foreground">%</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-muted-foreground whitespace-nowrap">Labor</label>
-              <div className="flex items-center gap-1">
-                <Input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  value={project.ntiLaborContingency ?? 0}
-                  onChange={(e) => updateProjectMeta({ ntiLaborContingency: parseFloat(e.target.value) || 0 })}
-                  className="h-7 w-20 bg-input/40 border-border/50 text-right text-sm font-mono tabular-nums rounded-md"
-                />
-                <span className="text-xs text-muted-foreground">%</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2.5 border-l border-border/30 pl-6">
-              <input
-                id="nti-lift-adder-cb"
-                type="checkbox"
-                checked={!!project.ntiLiftAdder}
-                onChange={(e) => updateProjectMeta({ ntiLiftAdder: e.target.checked })}
-                className="h-3.5 w-3.5 rounded border-border/60 accent-primary cursor-pointer"
-              />
-              <label htmlFor="nti-lift-adder-cb" className="text-xs text-muted-foreground cursor-pointer select-none whitespace-nowrap">
-                Lift Adder
-              </label>
-            </div>
-          </div>
-
-          {/* NTI Technology Tabs — all three, input values + BOM import only */}
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TechnologyType)}>
-            <TabsList className="h-8 p-0.5 bg-muted/60 rounded-lg w-auto inline-flex gap-0.5 border border-border/30">
-              {(["DAS", "PUBLIC_SAFETY", "ROIP"] as TechnologyType[]).map((type) => (
-                <TabsTrigger key={type} value={type} className="h-7 px-4 rounded-md text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                  {TECHNOLOGY_LABELS[type]}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-
-            {(["DAS", "PUBLIC_SAFETY", "ROIP"] as TechnologyType[]).map((type) => {
-              const tech = project.technologies.find((t) => t.type === type);
-              if (!tech) return null;
-              return (
-                <TabsContent key={type} value={type} className="space-y-4 mt-3">
-                  <div className="flex justify-end">
-                    <BomImportDialog
-                      tech={tech}
-                      coloSites={project.coloSites}
-                      onApply={updateTechnology}
-                      projectSpecificDetails={psd}
-                      numberOfGuys={project.schedule.numberOfGuys}
-                      hoursPerDay={project.inputParameters.hoursPerDay ?? 8}
-                      daysPerWeek={project.inputParameters.daysPerWeek ?? 5}
-                      materialContingency={project.ntiMaterialContingency ?? 0}
-                      laborContingency={project.ntiLaborContingency ?? 0}
-                      ntiMode
-                      ntiLiftAdder={!!project.ntiLiftAdder}
-                    />
-                  </div>
-                  <InputValuesTable tech={tech} coloSites={project.coloSites} onChange={updateTechnology} ntiMode />
-                  <NTIReportPreview
-                    tech={tech}
-                    coloSites={project.coloSites}
-                    materialContingency={project.ntiMaterialContingency ?? 0}
-                    laborContingency={project.ntiLaborContingency ?? 0}
-                  />
-                </TabsContent>
-              );
-            })}
-          </Tabs>
-
-          {/* NTI sticky total bar */}
-          <div className="h-14" />
-        </div>
-      ) : (
-        /* ── Network Connex Layout ────────────────────────────────────── */
-        <div className="max-w-[1600px] mx-auto px-5 py-5 space-y-4">
-          {/* Parameters Panel */}
-          <ParametersPanel
-            params={project.inputParameters}
-            onParamsChange={updateInputParameters}
-            pmTravel={project.pmTravel}
-            pmTravelCalculated={pmTravelCalculated}
-            onPMTravelChange={updatePMTravel}
-            installTravel={project.installTravel ?? DEFAULT_INSTALL_TRAVEL}
-            installTravelCalc={installTravelCalc}
-            onInstallTravelChange={updateInstallTravel}
-            numberOfGuys={fullSchedule.numberOfGuys}
-            onNumberOfGuysChange={(n) => updateSchedule({ ...fullSchedule, numberOfGuys: n })}
-            projectSpecificDetails={psd}
-            onProjectSpecificDetailsChange={updateProjectSpecificDetails}
-          />
-          <PerTechDetailsCard
-            technologies={project.technologies.filter((t) => t.enabled)}
-            onChange={updateTechnology}
-          />
-          <LaborSummary
-            technologies={project.technologies}
-            hoursPerDay={project.inputParameters.hoursPerDay ?? 8}
-            daysPerWeek={project.inputParameters.daysPerWeek ?? 5}
-            numberOfGuys={project.schedule.numberOfGuys}
-            projectSpecificDetails={psd}
-            laborSafety={project.inputParameters.laborSafety ?? 1}
-          />
-          <MaterialsSummary technologies={project.technologies} />
-
-          {/* COLO Sites */}
-          <div className="border border-border/60 rounded-lg px-4 py-2.5 bg-card/50">
-            <ColoManager coloSites={project.coloSites} onChange={updateColoSites} />
-          </div>
-
-          {/* Technology Tabs */}
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TechnologyType)}>
-            <TabsList className="h-8 p-0.5 bg-muted/60 rounded-lg w-auto inline-flex gap-0.5 border border-border/30">
-              {(["DAS", "PUBLIC_SAFETY", "ROIP"] as TechnologyType[]).map((type) => (
-                <TabsTrigger key={type} value={type} className="h-7 px-4 rounded-md text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                  {TECHNOLOGY_LABELS[type]}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-
-            {(["DAS", "PUBLIC_SAFETY", "ROIP"] as TechnologyType[]).map((type) => {
-              const tech = project.technologies.find((t) => t.type === type);
-              const quote = quotes.find((q) => q.type === type);
-              if (!tech) return null;
-              const techRentalMarkup = tech.enabled ? getTechRentalMarkup(tech) : 0;
-              const techSubMarkup = tech.enabled ? getTechSubMarkup(tech) : 0;
-              return (
-                <TabsContent key={type} value={type} className="space-y-4 mt-3">
-                  <div className="flex justify-end">
-                    <BomImportDialog
-                      tech={tech}
-                      coloSites={project.coloSites}
-                      onApply={updateTechnology}
-                      projectSpecificDetails={psd}
-                      numberOfGuys={project.schedule.numberOfGuys}
-                      hoursPerDay={project.inputParameters.hoursPerDay ?? 8}
-                      daysPerWeek={project.inputParameters.daysPerWeek ?? 5}
-                    />
-                  </div>
-                  <InputValuesTable tech={tech} coloSites={project.coloSites} onChange={updateTechnology} />
-                  {quote && <QuoteTable
-                    quote={quote}
-                    coloSites={project.coloSites}
-                    rentalMarkupCost={techRentalMarkup}
-                    adminPercent={adminPercent}
-                    subContractorTotal={techSubMarkup}
-                    taxPercent={taxPercent}
-                    installTravelActive={installTravelCalc !== null}
-                    materialSafety={project.inputParameters.materialSafety ?? 1}
-                    equipMarkUp={project.inputParameters.markUp ?? 1}
-                  />}
-                </TabsContent>
-              );
-            })}
-          </Tabs>
-
-          {quotes.length > 0 && <ProjectSummary quotes={quotes} projectSpecificDetails={psd} rentalMarkupTotal={rentalMarkupTotal} totalAdminValue={totalAdminValue} subMarkupTotal={subMarkupTotal} techTotals={techTotals} totalTaxValue={totalTaxValue} />}
-          {quotes.length > 0 && <FinancialReview items={financialItems} />}
-          <div className="h-14" />
-        </div>
-      )}
-
-      {/* Sticky total bar — NC mode only */}
-      {!isNTI && quotes.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-20 sticky-bar-blur">
-          <div className="max-w-[1600px] mx-auto px-5 py-2.5 flex items-center justify-between">
-            <div className="flex items-center gap-5">
-              {quotes.map((q) => (
-                <div key={q.type} className="flex items-center gap-2 text-sm">
-                  <div className={`h-2 w-2 rounded-full ${TECHNOLOGY_DOT[q.type]}`} />
-                  <span className="text-muted-foreground text-xs">{TECHNOLOGY_LABELS[q.type]}</span>
-                  <span className="font-mono tabular-nums text-xs">{formatCurrency(techTotals[q.type] ?? q.totalCost)}</span>
-                </div>
-              ))}
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-muted-foreground">Grand Total</span>
-              <span className="text-base font-semibold font-mono tabular-nums">
-                {formatCurrency(grandTotal)}
-              </span>
-            </div>
-          </div>
-        </div>
+      {/* ── Overlay panel ─────────────────────────────────────────── */}
+      {activePanel && (
+        <SidebarOverlayPanel panelId={activePanel} {...overlayProps} />
       )}
     </div>
   );

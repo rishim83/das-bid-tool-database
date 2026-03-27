@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { formatCurrency } from "@/lib/calculations";
+import type { TechnologyType } from "@/types";
+import { TECHNOLOGY_LABELS, TECHNOLOGY_DOT } from "@/lib/constants";
 
 export interface FinancialItem {
   label: string;
@@ -13,13 +15,15 @@ export interface FinancialItem {
 
 interface Props {
   items: FinancialItem[];
+  techTotals?: Record<TechnologyType, number>;
+  grandTotal?: number;
 }
 
 function pct(n: number): string {
   return n.toFixed(1) + "%";
 }
 
-export function FinancialReview({ items }: Props) {
+export function FinancialReview({ items, techTotals, grandTotal }: Props) {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -60,6 +64,30 @@ export function FinancialReview({ items }: Props) {
             : <ChevronRight className="h-3 w-3 text-muted-foreground/50" />}
         </div>
       </button>
+
+      {open && techTotals && (
+        <div className="px-4 py-3 border-b border-border/30 bg-muted/20 flex items-center gap-6 flex-wrap">
+          {(Object.entries(techTotals) as [TechnologyType, number][]).map(([type, total]) => (
+            <div key={type} className="flex items-center gap-2">
+              <div className={`h-2 w-2 rounded-full shrink-0 ${TECHNOLOGY_DOT[type]}`} />
+              <div className="flex flex-col">
+                <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  {TECHNOLOGY_LABELS[type]}
+                </span>
+                <span className="text-xs font-semibold font-mono tabular-nums">
+                  {formatCurrency(total)}
+                </span>
+              </div>
+            </div>
+          ))}
+          {grandTotal !== undefined && (
+            <div className="ml-auto flex flex-col items-end">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Grand Total</span>
+              <span className="text-sm font-bold font-mono tabular-nums">{formatCurrency(grandTotal)}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {open && (
         <div className="overflow-x-auto">
