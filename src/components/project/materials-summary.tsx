@@ -13,7 +13,7 @@ interface Props {
 }
 
 export function MaterialsSummary({ technologies }: Props) {
-  const [showBreakdown, setShowBreakdown] = useState(false);
+  const [showBreakdown, setShowBreakdown] = useState(true);
 
   const scopeData = SCOPE_TYPES.map((type) => {
     const tech = technologies.find((t) => t.type === type && t.enabled);

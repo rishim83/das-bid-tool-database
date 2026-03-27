@@ -24,7 +24,7 @@ function pct(n: number): string {
 }
 
 export function FinancialReview({ items, techTotals, grandTotal }: Props) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const visible = items.filter((i) => i.sell > 0 || i.cost > 0);

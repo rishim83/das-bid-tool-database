@@ -26,7 +26,7 @@ function fmt(n: number, decimals = 1): string {
 }
 
 export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfGuys, projectSpecificDetails, laborSafety = 1 }: Props) {
-  const [showBreakdown, setShowBreakdown] = useState(false);
+  const [showBreakdown, setShowBreakdown] = useState(true);
 
   const hpd = hoursPerDay > 0 ? hoursPerDay : 8;
   const dpw = daysPerWeek > 0 ? daysPerWeek : 5;

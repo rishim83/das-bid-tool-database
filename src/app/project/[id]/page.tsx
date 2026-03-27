@@ -1058,6 +1058,8 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
                 <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TechnologyType)}>
                   <TabsList className="h-8 p-0.5 bg-muted/60 rounded-lg w-auto inline-flex gap-0.5 border border-border/30">
                     {(["DAS", "PUBLIC_SAFETY", "ROIP"] as TechnologyType[]).map((type) => {
+                      const tech = project.technologies.find((t) => t.type === type);
+                      if (!tech?.enabled) return null;
                       const q = quotes.find((q) => q.type === type);
                       return (
                         <TabsTrigger
@@ -1080,9 +1082,9 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
                   {(["DAS", "PUBLIC_SAFETY", "ROIP"] as TechnologyType[]).map((type) => {
                     const tech = project.technologies.find((t) => t.type === type);
                     const quote = quotes.find((q) => q.type === type);
-                    if (!tech || !quote) return null;
-                    const techRentalMarkup = tech.enabled ? getTechRentalMarkup(tech) : 0;
-                    const techSubMarkup = tech.enabled ? getTechSubMarkup(tech) : 0;
+                    if (!tech?.enabled || !quote) return null;
+                    const techRentalMarkup = getTechRentalMarkup(tech);
+                    const techSubMarkup = getTechSubMarkup(tech);
                     return (
                       <TabsContent key={type} value={type} className="mt-3">
                         <QuoteTable
