@@ -34,7 +34,7 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
   const psd = projectSpecificDetails;
 
   const scopeData = SCOPE_TYPES.map((type) => {
-    const tech = technologies.find((t) => t.type === type);
+    const tech = technologies.find((t) => t.type === type && t.enabled);
     if (!tech) return { type, totalHours: 0, contingencyHours: 0, billedHours: 0, totalDays: 0, totalWeeks: 0, breakdown: null as null, dynBreakdown: null as null };
 
     // Use effective labor hours (BOM + dynamic extras) for the total
