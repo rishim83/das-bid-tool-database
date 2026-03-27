@@ -15,6 +15,8 @@ import {
   calculatePMTravel,
   calculateTechnologyQuote,
   calculateInstallTravel,
+  computeEffectiveLaborHoursPerColo,
+  computeEffectiveEquipmentCostPerColo,
   formatCurrency,
 } from "@/lib/calculations";
 import { TECHNOLOGY_LABELS, TECHNOLOGY_DOT } from "@/lib/constants";
@@ -49,14 +51,28 @@ function QuoteDocument({ project }: { project: Project }) {
     [project.pmTravel]
   );
 
+  const techPsd = project.projectSpecificDetails;
+  const hpd = project.inputParameters.hoursPerDay ?? 8;
+  const numGuys = project.schedule.numberOfGuys;
+
+  // Effective techs: same as useProject — installLaborHours and equipmentCost include dynamic extras
+  const effectiveTechs = useMemo(() => {
+    return project.technologies.map((tech) => {
+      if (!tech.enabled) return tech;
+      const effectiveHours = computeEffectiveLaborHoursPerColo(tech, techPsd, numGuys, hpd);
+      const effectiveEquipment = computeEffectiveEquipmentCostPerColo(tech);
+      return { ...tech, installLaborHours: effectiveHours, equipmentCost: effectiveEquipment };
+    });
+  }, [project.technologies, techPsd, numGuys, hpd]);
+
   // Total install labor hours across all enabled techs (matches LaborSummary)
   const totalAllLaborHours = useMemo(() => {
-    return project.technologies
+    return effectiveTechs
       .filter((t) => t.enabled)
       .reduce((sum, tech) => {
         return sum + Object.values(tech.installLaborHours).reduce((s, h) => s + (h || 0), 0);
       }, 0);
-  }, [project.technologies]);
+  }, [effectiveTechs]);
 
   // Install travel
   const installTravelCalc = useMemo(() => {
@@ -65,17 +81,17 @@ function QuoteDocument({ project }: { project: Project }) {
     return calculateInstallTravel(
       config,
       totalAllLaborHours,
-      project.inputParameters.hoursPerDay ?? 8,
-      project.schedule.numberOfGuys,
+      hpd,
+      numGuys,
       project.inputParameters.travelIndirectMarkup ?? 1.23,
       project.inputParameters.buyHourlyRate ?? 55
     );
-  }, [project.installTravel, totalAllLaborHours, project.inputParameters, project.schedule.numberOfGuys]);
+  }, [project.installTravel, totalAllLaborHours, project.inputParameters, numGuys, hpd]);
 
   // Technology quotes (same logic as useProject)
   const quotes: TechnologyQuote[] = useMemo(
     () =>
-      project.technologies
+      effectiveTechs
         .filter((t) => t.enabled)
         .map((tech) => {
           let installTravelOverride: number | undefined;
@@ -89,12 +105,12 @@ function QuoteDocument({ project }: { project: Project }) {
             project.coloSites,
             project.inputParameters,
             pmTravelCalculated.totalPerTrip,
-            project.schedule.numberOfGuys,
+            numGuys,
             0,
             installTravelOverride
           );
         }),
-    [project.technologies, project.coloSites, project.inputParameters, pmTravelCalculated, project.schedule.numberOfGuys, installTravelCalc, totalAllLaborHours]
+    [effectiveTechs, project.coloSites, project.inputParameters, pmTravelCalculated, numGuys, installTravelCalc, totalAllLaborHours]
   );
 
   // Per-tech helpers
@@ -103,7 +119,7 @@ function QuoteDocument({ project }: { project: Project }) {
 
   const getTechRentalRaw = useCallback((tech: TechnologyConfig) => {
     const r = tech.rentalEquipment ?? DEFAULT_RENTAL_EQUIPMENT;
-    return r.lift.months * r.lift.costPerMonth +
+    return (r.lift.numberOfLifts ?? 1) * r.lift.months * r.lift.costPerMonth +
       (r.additionalItems ?? []).reduce((s: number, i: { months: number; costPerMonth: number }) => s + i.months * i.costPerMonth, 0);
   }, []);
 
