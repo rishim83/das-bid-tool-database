@@ -1110,15 +1110,17 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
                 </Tabs>
 
                 {/* Output summaries */}
-                <LaborSummary
-                  technologies={project.technologies}
-                  hoursPerDay={project.inputParameters.hoursPerDay ?? 8}
-                  daysPerWeek={project.inputParameters.daysPerWeek ?? 5}
-                  numberOfGuys={project.schedule.numberOfGuys}
-                  projectSpecificDetails={psd}
-                  laborSafety={project.inputParameters.laborSafety ?? 1}
-                />
-                <MaterialsSummary technologies={project.technologies} />
+                <div className="flex flex-wrap gap-4">
+                  <LaborSummary
+                    technologies={project.technologies}
+                    hoursPerDay={project.inputParameters.hoursPerDay ?? 8}
+                    daysPerWeek={project.inputParameters.daysPerWeek ?? 5}
+                    numberOfGuys={project.schedule.numberOfGuys}
+                    projectSpecificDetails={psd}
+                    laborSafety={project.inputParameters.laborSafety ?? 1}
+                  />
+                  <MaterialsSummary technologies={project.technologies} />
+                </div>
                 {quotes.length > 0 && (
                   <FinancialReview
                     items={financialItems}
