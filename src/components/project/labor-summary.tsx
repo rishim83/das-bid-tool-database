@@ -141,15 +141,15 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
   });
 
   return (
-    <div className="w-fit border border-border/60 rounded-lg overflow-hidden card-elevated bg-card" style={{ borderLeft: "2px solid oklch(0.50 0.18 255 / 0.35)" }}>
+    <div className="border border-border/60 rounded-lg overflow-hidden card-elevated bg-card" style={{ borderLeft: "2px solid oklch(0.50 0.18 255 / 0.35)" }}>
       <div className="px-3 py-2 border-b border-border/50 header-gradient">
         <h3 className="text-[11px] font-semibold uppercase tracking-wider text-foreground/60">Labor Summary</h3>
       </div>
       <div className="overflow-x-auto">
-        <table className="text-sm w-full min-w-[50vw]">
+        <table className="text-sm w-full">
           <thead>
             <tr className="border-b border-border/40 bg-card">
-              <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground w-full min-w-[160px]" />
+              <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground min-w-[160px]" />
               {visibleScopeData.map(({ type }) => (
                 <th key={type} className="px-4 py-2 text-right text-xs font-medium min-w-[120px]">
                   <div className="flex items-center justify-end">
