@@ -579,7 +579,19 @@ export function ProjectSidebar({
                   prefix="$"
                 />
                 {installTravelCalc && (
-                  <DisplayRow label="Total (w/ markup)" value={formatCurrency(installTravelCalc.markedUpTotal)} />
+                  <>
+                    {installTravelCalc.travelHours > 0 && (
+                      <DisplayRow
+                        label="Travel Hours"
+                        value={`${installTravelCalc.travelHours.toFixed(1)} h`}
+                      />
+                    )}
+                    <DisplayRow
+                      label="Travel Labor"
+                      value={formatCurrency(installTravelCalc.travelLaborTotal)}
+                    />
+                    <DisplayRow label="Total (w/ markup)" value={formatCurrency(installTravelCalc.markedUpTotal)} />
+                  </>
                 )}
               </>
             );
