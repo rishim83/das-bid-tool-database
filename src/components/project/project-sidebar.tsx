@@ -589,7 +589,7 @@ export function ProjectSidebar({
                   value={it.airfarePricePerTrip}
                   onChange={(v) => onUpdateInstallTravel({ ...it, airfarePricePerTrip: v })}
                   prefix="$"
-                  total={installTravelCalc ? `= ${formatCurrency(installTravelCalc.airfareTotal)}` : undefined}
+                  total={(() => { const t = (it.roundTrips ?? 1) * it.airfarePricePerTrip; return t > 0 ? `= ${formatCurrency(t)}` : undefined; })()}
                 />
                 <InlineField
                   label="Lodging / Night"
