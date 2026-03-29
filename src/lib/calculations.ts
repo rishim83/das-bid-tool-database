@@ -40,11 +40,12 @@ export function calculateInstallTravel(
   const roundTrips = config.roundTrips ?? 1;
 
   const calendarDays = projectDays + Math.floor(projectDays / 5) * 2;
-  const perDiemTotal = calendarDays * config.perDiemRate;
+  const guys = Math.max(numberOfGuys, 1);
+  const perDiemTotal = calendarDays * config.perDiemRate * guys;
   const travelLaborTotal = roundTrips * buyHourlyRate * 16; // 2 travel days × 8 hrs per round trip
-  const airfareTotal = roundTrips * config.airfarePricePerTrip;
-  const lodgingTotal = projectDays * config.lodgingRatePerNight;
-  const carRentalTotal = projectDays * (config.carRentalPerDay ?? 0);
+  const airfareTotal = roundTrips * config.airfarePricePerTrip * guys;
+  const lodgingTotal = calendarDays * config.lodgingRatePerNight * guys;
+  const carRentalTotal = calendarDays * (config.carRentalPerDay ?? 0) * (guys / 2);
   const fuelTotal = config.fuel;
 
   const rawTotal = perDiemTotal + travelLaborTotal + airfareTotal + lodgingTotal + carRentalTotal + fuelTotal;

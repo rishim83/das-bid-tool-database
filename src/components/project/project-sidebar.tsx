@@ -154,6 +154,7 @@ function InlineField({
   suffix,
   step = "any",
   total,
+  tooltip,
 }: {
   label: string;
   value: number;
@@ -162,10 +163,22 @@ function InlineField({
   suffix?: string;
   step?: string;
   total?: string;
+  tooltip?: string;
 }) {
   return (
     <div className="flex items-center justify-between px-3 py-1.5 gap-2">
-      <span className="text-[10.5px] text-muted-foreground/60 shrink-0">{label}</span>
+      {tooltip ? (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="text-[10.5px] text-muted-foreground/60 shrink-0 cursor-help border-b border-dashed border-muted-foreground/30">{label}</span>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="max-w-[220px] text-xs">{tooltip}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ) : (
+        <span className="text-[10.5px] text-muted-foreground/60 shrink-0">{label}</span>
+      )}
       <div className="flex items-center gap-1.5 shrink-0">
       {total && <span className="text-[10px] font-mono tabular-nums text-muted-foreground/40">{total}</span>}
       <div className="flex items-stretch rounded-md border border-border/50 bg-input/50 overflow-hidden focus-within:border-primary/40 transition-colors">
@@ -482,7 +495,7 @@ export function ProjectSidebar({
             Install Rate
           </div>
           <InlineField
-            label="Buy"
+            label="Cost"
             value={ip.buyHourlyRate ?? 55}
             onChange={(v) => onUpdateInputParameters({ ...ip, buyHourlyRate: v })}
             prefix="$"
@@ -497,7 +510,7 @@ export function ProjectSidebar({
             PM Rate
           </div>
           <InlineField
-            label="Buy"
+            label="Cost"
             value={ip.buyPMHourlyRate ?? 95}
             onChange={(v) => onUpdateInputParameters({ ...ip, buyPMHourlyRate: v })}
             prefix="$"
@@ -563,6 +576,7 @@ export function ProjectSidebar({
         >
           {(() => {
             const it = project.installTravel ?? DEFAULT_INSTALL_TRAVEL;
+            const guys = Math.max(fullSchedule.numberOfGuys, 1);
             return (
               <>
                 <InlineField
@@ -570,46 +584,53 @@ export function ProjectSidebar({
                   value={it.travelPercent}
                   onChange={(v) => onUpdateInstallTravel({ ...it, travelPercent: v })}
                   suffix="%"
+                  tooltip="% of total billed labor hours used as travel hours"
                 />
                 <InlineField
                   label="Per Diem / Day"
                   value={it.perDiemRate}
                   onChange={(v) => onUpdateInstallTravel({ ...it, perDiemRate: v })}
                   prefix="$"
-                  total={installTravelCalc ? `= ${formatCurrency(installTravelCalc.perDiemTotal)}` : undefined}
+                  total={installTravelCalc ? `= ${formatCurrency(installTravelCalc.perDiemTotal)} (×${guys})` : undefined}
+                  tooltip={`Rate/day × Calendar Days (w/ weekends) × ${guys} techs`}
                 />
                 <InlineField
                   label="Round Trips"
                   value={it.roundTrips ?? 1}
                   onChange={(v) => onUpdateInstallTravel({ ...it, roundTrips: Math.max(0, v) })}
                   step="1"
+                  tooltip="Number of round trips for the crew (used for airfare & travel labor)"
                 />
                 <InlineField
                   label="Airfare / Trip"
                   value={it.airfarePricePerTrip}
                   onChange={(v) => onUpdateInstallTravel({ ...it, airfarePricePerTrip: v })}
                   prefix="$"
-                  total={(() => { const t = (it.roundTrips ?? 1) * it.airfarePricePerTrip; return t > 0 ? `= ${formatCurrency(t)}` : undefined; })()}
+                  total={installTravelCalc ? `= ${formatCurrency(installTravelCalc.airfareTotal)} (×${guys})` : undefined}
+                  tooltip={`Price/trip × ${it.roundTrips ?? 1} round trips × ${guys} techs`}
                 />
                 <InlineField
                   label="Lodging / Night"
                   value={it.lodgingRatePerNight}
                   onChange={(v) => onUpdateInstallTravel({ ...it, lodgingRatePerNight: v })}
                   prefix="$"
-                  total={installTravelCalc ? `= ${formatCurrency(installTravelCalc.lodgingTotal)}` : undefined}
+                  total={installTravelCalc ? `= ${formatCurrency(installTravelCalc.lodgingTotal)} (×${guys})` : undefined}
+                  tooltip={`Rate/night × Calendar Days (w/ weekends) × ${guys} techs`}
                 />
                 <InlineField
                   label="Car Rental / Day"
                   value={it.carRentalPerDay ?? 0}
                   onChange={(v) => onUpdateInstallTravel({ ...it, carRentalPerDay: v })}
                   prefix="$"
-                  total={installTravelCalc ? `= ${formatCurrency(installTravelCalc.carRentalTotal)}` : undefined}
+                  total={installTravelCalc ? `= ${formatCurrency(installTravelCalc.carRentalTotal)} (×${(guys / 2).toFixed(1)})` : undefined}
+                  tooltip={`Rate/day × Calendar Days (w/ weekends) × ${(guys / 2).toFixed(1)} cars (# techs ÷ 2)`}
                 />
                 <InlineField
                   label="Fuel (flat)"
                   value={it.fuel}
                   onChange={(v) => onUpdateInstallTravel({ ...it, fuel: v })}
                   prefix="$"
+                  tooltip="Flat fuel cost added to travel total"
                 />
                 {installTravelCalc && (() => {
                   const travelDays = installTravelCalc.projectDays;
@@ -640,12 +661,17 @@ export function ProjectSidebar({
                       <DisplayRow
                         label="Travel Labor"
                         value={formatCurrency(installTravelCalc.travelLaborTotal)}
-                        tooltip="Round Trips × Buy Rate × 16  (2 travel days × 8 hrs per round trip)"
+                        tooltip="Round Trips × Cost Rate × 16  (2 travel days × 8 hrs per round trip)"
+                      />
+                      <DisplayRow
+                        label="Subtotal"
+                        value={formatCurrency(installTravelCalc.rawTotal)}
+                        tooltip="(Per Diem + Lodging) × Cal Days (w/ weekends) × # Guys  |  Airfare × Round Trips × # Guys  |  Car Rental × Cal Days (w/ weekends) × (# Guys ÷ 2)  |  + Travel Labor + Fuel"
                       />
                       <DisplayRow
                         label="Total (w/ markup)"
                         value={formatCurrency(installTravelCalc.markedUpTotal)}
-                        tooltip="(Per Diem + Travel Labor + Airfare + Lodging + Car Rental + Fuel) × T&I Markup"
+                        tooltip={`Subtotal × ${project.inputParameters.travelIndirectMarkup ?? 1.23} (T&I Markup)`}
                       />
                     </TooltipProvider>
                   );
