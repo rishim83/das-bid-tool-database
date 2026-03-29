@@ -254,36 +254,6 @@ function TechSubSection({
   );
 }
 
-// ─── Tech enable toggle ──────────────────────────────────────────
-
-function TechToggle({
-  tech,
-  onChange,
-}: {
-  tech: TechnologyConfig;
-  onChange: (t: TechnologyConfig) => void;
-}) {
-  return (
-    <label className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-sidebar-accent/50 transition-colors">
-      <input
-        type="checkbox"
-        checked={tech.enabled}
-        onChange={(e) => onChange({ ...tech, enabled: e.target.checked })}
-        className="h-3.5 w-3.5 rounded border-border/50 accent-primary cursor-pointer shrink-0"
-      />
-      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase shrink-0 ${TECHNOLOGY_BG[tech.type]} ${TECHNOLOGY_TINT_DARK[tech.type]}`}>
-        {TECHNOLOGY_LABELS[tech.type]}
-      </span>
-      <span className={`ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-        tech.enabled
-          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-          : "bg-muted text-muted-foreground"
-      }`}>
-        {tech.enabled ? "On" : "Off"}
-      </span>
-    </label>
-  );
-}
 
 // ─── Main ProjectSidebar component ──────────────────────────────
 
@@ -723,16 +693,38 @@ export function ProjectSidebar({
         icon={<PackageOpen className="h-3.5 w-3.5" />}
         defaultOpen
       >
-        {/* Mini tech tabs */}
-        <div className="flex border-b border-sidebar-border/50 mx-3 mt-1 mb-2 gap-0.5">
+        {/* ── Enable toggles (all 3 at top) ── */}
+        <div className="grid grid-cols-3 gap-px border-b border-sidebar-border/40 bg-sidebar-border/40">
+          {TECH_TYPES.map((type) => {
+            const t = project.technologies.find((x) => x.type === type);
+            if (!t) return null;
+            return (
+              <label
+                key={type}
+                className="flex flex-col items-center gap-1.5 py-2.5 px-1 cursor-pointer bg-card hover:bg-sidebar-accent/50 transition-colors"
+              >
+                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase ${TECHNOLOGY_BG[type]} ${TECHNOLOGY_TINT_DARK[type]}`}>
+                  {type === "PUBLIC_SAFETY" ? "PS" : type}
+                </span>
+                <input
+                  type="checkbox"
+                  checked={t.enabled}
+                  onChange={(e) => onUpdateTechnology({ ...t, enabled: e.target.checked })}
+                  className="h-3.5 w-3.5 rounded border-border/50 accent-primary cursor-pointer"
+                />
+              </label>
+            );
+          })}
+        </div>
+
+        {/* ── Tech tabs ── */}
+        <div className="flex border-b border-sidebar-border/50 mx-3 mt-2 mb-1 gap-0.5">
           {TECH_TYPES.map((type) => (
             <button
               key={type}
               onClick={() => onTabChange(type)}
               className={`flex-1 py-1.5 text-[11px] font-semibold rounded-t transition-colors ${
-                activeTab === type
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
+                activeTab === type ? "text-foreground" : "text-muted-foreground hover:text-foreground"
               }`}
               style={activeTab === type
                 ? { borderBottom: `2px solid ${TECH_ACCENT_HEX[type]}` }
@@ -743,11 +735,19 @@ export function ProjectSidebar({
           ))}
         </div>
 
-        {/* Active tech content */}
+        {/* ── Active tech content ── */}
         {TECH_TYPES.map((type) => {
           if (type !== activeTab) return null;
           const tech = project.technologies.find((t) => t.type === type);
           if (!tech) return null;
+
+          if (!tech.enabled) {
+            return (
+              <p key={type} className="px-3 py-3 text-xs text-muted-foreground/50 text-center">
+                {type === "PUBLIC_SAFETY" ? "PS" : type} is disabled
+              </p>
+            );
+          }
 
           const rental = tech.rentalEquipment ?? DEFAULT_RENTAL_EQUIPMENT;
           const additionalLabor = tech.additionalLaborItems ?? [];
@@ -757,7 +757,6 @@ export function ProjectSidebar({
           const update = (patch: Partial<typeof tech>) =>
             onUpdateTechnology({ ...tech, ...patch });
 
-          // Additional Labor mutations
           const addLaborItem = () =>
             update({ additionalLaborItems: [...additionalLabor, { id: uuid(), description: "", hours: 0 }] });
           const updateLaborItem = (id: string, field: "description" | "hours", val: string | number) =>
@@ -765,7 +764,6 @@ export function ProjectSidebar({
           const removeLaborItem = (id: string) =>
             update({ additionalLaborItems: additionalLabor.filter((i) => i.id !== id) });
 
-          // Additional Materials mutations
           const addMaterialItem = () =>
             update({ additionalMaterials: [...additionalMaterials, { id: uuid(), name: "", value: 0 }] });
           const updateMaterialItem = (id: string, field: "name" | "value", val: string | number) =>
@@ -773,7 +771,6 @@ export function ProjectSidebar({
           const removeMaterialItem = (id: string) =>
             update({ additionalMaterials: additionalMaterials.filter((m) => m.id !== id) });
 
-          // Subcontractor mutations
           const addSub = () =>
             update({ subContractors: [...subs, { id: uuid(), task: "", value: 0 }] });
           const updateSub = (id: string, field: "task" | "value", val: string | number) =>
@@ -781,7 +778,6 @@ export function ProjectSidebar({
           const removeSub = (id: string) =>
             update({ subContractors: subs.filter((s) => s.id !== id) });
 
-          // Rental mutations
           const updateLift = (field: string, val: number | boolean) =>
             update({ rentalEquipment: { ...rental, lift: { ...rental.lift, [field]: val } } });
           const addRentalItem = () =>
@@ -799,218 +795,202 @@ export function ProjectSidebar({
 
           return (
             <div key={type}>
-              {/* Enable toggle */}
-              <TechToggle tech={tech} onChange={onUpdateTechnology} />
+              {/* Input Values & BOM */}
+              <PanelTrigger
+                label="Input Values & BOM"
+                summary={getTechInputSummary(tech)}
+                onClick={() => onOpenPanel(`input-values-${type}`)}
+              />
 
-              {tech.enabled && (
-                <>
-                  {/* Input Values & BOM */}
-                  <PanelTrigger
-                    label="Input Values & BOM"
-                    summary={getTechInputSummary(tech)}
-                    onClick={() => onOpenPanel(`input-values-${type}`)}
-                    accent
-                  />
+              {/* Inline fields */}
+              <InlineField
+                label="Material Handling"
+                value={tech.materialHandlingHours ?? 0}
+                onChange={(v) => update({ materialHandlingHours: v })}
+                suffix="hrs"
+              />
+              <InlineField
+                label="Commissioning"
+                value={tech.commissioningSupport ?? 0}
+                onChange={(v) => update({ commissioningSupport: v })}
+                suffix="hrs"
+              />
+              <InlineField
+                label="Water & Ice"
+                value={tech.waterAndIce ?? 0}
+                onChange={(v) => update({ waterAndIce: v })}
+                prefix="$"
+              />
 
-                  {/* Material Handling + Commissioning + Water & Ice inline */}
-                  <InlineField
-                    label="Material Handling"
-                    value={tech.materialHandlingHours ?? 0}
-                    onChange={(v) => update({ materialHandlingHours: v })}
-                    suffix="hrs"
-                  />
-                  <InlineField
-                    label="Commissioning"
-                    value={tech.commissioningSupport ?? 0}
-                    onChange={(v) => update({ commissioningSupport: v })}
-                    suffix="hrs"
-                  />
-                  <InlineField
-                    label="Water & Ice"
-                    value={tech.waterAndIce ?? 0}
-                    onChange={(v) => update({ waterAndIce: v })}
-                    prefix="$"
-                  />
-
-                  {/* Additional Labor */}
-                  <TechSubSection
-                    title="Additional Labor"
-                    summary={addlLaborTotal > 0 ? `${addlLaborTotal.toFixed(0)} hrs` : additionalLabor.length > 0 ? `${additionalLabor.length} item${additionalLabor.length !== 1 ? "s" : ""}` : undefined}
-                  >
-                    <div className="px-3 flex flex-col gap-1.5 pt-1">
-                      {additionalLabor.map((item) => (
-                        <div key={item.id} className="flex items-center gap-1">
-                          <Input
-                            value={item.description}
-                            onChange={(e) => updateLaborItem(item.id, "description", e.target.value)}
-                            placeholder="Description"
-                            className="h-6 flex-1 bg-input/40 border-border/50 text-xs rounded-md min-w-0"
-                          />
-                          <Input
-                            type="number"
-                            step="any"
-                            min={0}
-                            value={item.hours}
-                            onChange={(e) => updateLaborItem(item.id, "hours", parseFloat(e.target.value) || 0)}
-                            className="h-6 w-14 bg-input/40 border-border/50 text-right text-xs font-mono tabular-nums rounded-md shrink-0"
-                          />
-                          <span className="text-[10px] text-muted-foreground shrink-0">h</span>
-                          <button onClick={() => removeLaborItem(item.id)} className="h-5 w-5 flex items-center justify-center text-muted-foreground/40 hover:text-destructive transition-colors shrink-0">
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ))}
-                      <Button variant="ghost" size="sm" onClick={addLaborItem}
-                        className="h-6 text-xs text-muted-foreground border border-dashed border-border/50 hover:border-primary/40 hover:text-primary w-full mt-0.5">
-                        <Plus className="h-3 w-3 mr-1" /> Add Labor
-                      </Button>
+              {/* Additional Labor */}
+              <TechSubSection
+                title="Additional Labor"
+                summary={addlLaborTotal > 0 ? `${addlLaborTotal.toFixed(0)} hrs` : additionalLabor.length > 0 ? `${additionalLabor.length} item${additionalLabor.length !== 1 ? "s" : ""}` : undefined}
+              >
+                <div className="px-3 flex flex-col gap-1.5 pt-1">
+                  {additionalLabor.map((item) => (
+                    <div key={item.id} className="flex items-center gap-1">
+                      <Input
+                        value={item.description}
+                        onChange={(e) => updateLaborItem(item.id, "description", e.target.value)}
+                        placeholder="Description"
+                        className="h-6 flex-1 bg-input/40 border-border/50 text-xs rounded-md min-w-0"
+                      />
+                      <Input
+                        type="number" step="any" min={0}
+                        value={item.hours}
+                        onChange={(e) => updateLaborItem(item.id, "hours", parseFloat(e.target.value) || 0)}
+                        className="h-6 w-14 bg-input/40 border-border/50 text-right text-xs font-mono tabular-nums rounded-md shrink-0"
+                      />
+                      <span className="text-[10px] text-muted-foreground shrink-0">h</span>
+                      <button onClick={() => removeLaborItem(item.id)} className="h-5 w-5 flex items-center justify-center text-muted-foreground/40 hover:text-destructive transition-colors shrink-0">
+                        <Trash2 className="h-3 w-3" />
+                      </button>
                     </div>
-                  </TechSubSection>
+                  ))}
+                  <Button variant="ghost" size="sm" onClick={addLaborItem}
+                    className="h-6 text-xs text-muted-foreground border border-dashed border-border/50 hover:border-primary/40 hover:text-primary w-full mt-0.5">
+                    <Plus className="h-3 w-3 mr-1" /> Add Labor
+                  </Button>
+                </div>
+              </TechSubSection>
 
-                  {/* Additional Materials */}
-                  <TechSubSection
-                    title="Additional Materials"
-                    summary={addlMatTotal > 0 ? formatCurrency(addlMatTotal) : additionalMaterials.length > 0 ? `${additionalMaterials.length} item${additionalMaterials.length !== 1 ? "s" : ""}` : undefined}
-                  >
-                    <div className="px-3 flex flex-col gap-1.5 pt-1">
-                      {additionalMaterials.map((item) => (
-                        <div key={item.id} className="flex items-center gap-1">
-                          <Input
-                            value={item.name}
-                            onChange={(e) => updateMaterialItem(item.id, "name", e.target.value)}
-                            placeholder="Name"
-                            className="h-6 flex-1 bg-input/40 border-border/50 text-xs rounded-md min-w-0"
-                          />
-                          <span className="text-[10px] text-muted-foreground shrink-0">$</span>
-                          <Input
-                            type="number"
-                            step="any"
-                            min={0}
-                            value={item.value}
-                            onChange={(e) => updateMaterialItem(item.id, "value", parseFloat(e.target.value) || 0)}
-                            className="h-6 w-20 bg-input/40 border-border/50 text-right text-xs font-mono tabular-nums rounded-md shrink-0"
-                          />
-                          <button onClick={() => removeMaterialItem(item.id)} className="h-5 w-5 flex items-center justify-center text-muted-foreground/40 hover:text-destructive transition-colors shrink-0">
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ))}
-                      <Button variant="ghost" size="sm" onClick={addMaterialItem}
-                        className="h-6 text-xs text-muted-foreground border border-dashed border-border/50 hover:border-primary/40 hover:text-primary w-full mt-0.5">
-                        <Plus className="h-3 w-3 mr-1" /> Add Material
-                      </Button>
+              {/* Additional Materials */}
+              <TechSubSection
+                title="Additional Materials"
+                summary={addlMatTotal > 0 ? formatCurrency(addlMatTotal) : additionalMaterials.length > 0 ? `${additionalMaterials.length} item${additionalMaterials.length !== 1 ? "s" : ""}` : undefined}
+              >
+                <div className="px-3 flex flex-col gap-1.5 pt-1">
+                  {additionalMaterials.map((item) => (
+                    <div key={item.id} className="flex items-center gap-1">
+                      <Input
+                        value={item.name}
+                        onChange={(e) => updateMaterialItem(item.id, "name", e.target.value)}
+                        placeholder="Name"
+                        className="h-6 flex-1 bg-input/40 border-border/50 text-xs rounded-md min-w-0"
+                      />
+                      <span className="text-[10px] text-muted-foreground shrink-0">$</span>
+                      <Input
+                        type="number" step="any" min={0}
+                        value={item.value}
+                        onChange={(e) => updateMaterialItem(item.id, "value", parseFloat(e.target.value) || 0)}
+                        className="h-6 w-20 bg-input/40 border-border/50 text-right text-xs font-mono tabular-nums rounded-md shrink-0"
+                      />
+                      <button onClick={() => removeMaterialItem(item.id)} className="h-5 w-5 flex items-center justify-center text-muted-foreground/40 hover:text-destructive transition-colors shrink-0">
+                        <Trash2 className="h-3 w-3" />
+                      </button>
                     </div>
-                  </TechSubSection>
+                  ))}
+                  <Button variant="ghost" size="sm" onClick={addMaterialItem}
+                    className="h-6 text-xs text-muted-foreground border border-dashed border-border/50 hover:border-primary/40 hover:text-primary w-full mt-0.5">
+                    <Plus className="h-3 w-3 mr-1" /> Add Material
+                  </Button>
+                </div>
+              </TechSubSection>
 
-                  {/* Subcontractors */}
-                  <TechSubSection
-                    title="Subcontractors"
-                    summary={subTotal > 0 ? formatCurrency(subTotal) : subs.length > 0 ? `${subs.length} sub${subs.length !== 1 ? "s" : ""}` : undefined}
-                  >
-                    <div className="px-3 flex flex-col gap-1.5 pt-1">
-                      {subs.map((sub) => (
-                        <div key={sub.id} className="flex items-center gap-1">
-                          <Input
-                            value={sub.task}
-                            onChange={(e) => updateSub(sub.id, "task", e.target.value)}
-                            placeholder="Task"
-                            className="h-6 flex-1 bg-input/40 border-border/50 text-xs rounded-md min-w-0"
-                          />
-                          <span className="text-[10px] text-muted-foreground shrink-0">$</span>
-                          <Input
-                            type="number"
-                            step="any"
-                            min={0}
-                            value={sub.value}
-                            onChange={(e) => updateSub(sub.id, "value", parseFloat(e.target.value) || 0)}
-                            className="h-6 w-20 bg-input/40 border-border/50 text-right text-xs font-mono tabular-nums rounded-md shrink-0"
-                          />
-                          <button onClick={() => removeSub(sub.id)} className="h-5 w-5 flex items-center justify-center text-muted-foreground/40 hover:text-destructive transition-colors shrink-0">
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ))}
-                      <Button variant="ghost" size="sm" onClick={addSub}
-                        className="h-6 text-xs text-muted-foreground border border-dashed border-border/50 hover:border-primary/40 hover:text-primary w-full mt-0.5">
-                        <Plus className="h-3 w-3 mr-1" /> Add Subcontractor
-                      </Button>
+              {/* Subcontractors */}
+              <TechSubSection
+                title="Subcontractors"
+                summary={subTotal > 0 ? formatCurrency(subTotal) : subs.length > 0 ? `${subs.length} sub${subs.length !== 1 ? "s" : ""}` : undefined}
+              >
+                <div className="px-3 flex flex-col gap-1.5 pt-1">
+                  {subs.map((sub) => (
+                    <div key={sub.id} className="flex items-center gap-1">
+                      <Input
+                        value={sub.task}
+                        onChange={(e) => updateSub(sub.id, "task", e.target.value)}
+                        placeholder="Task"
+                        className="h-6 flex-1 bg-input/40 border-border/50 text-xs rounded-md min-w-0"
+                      />
+                      <span className="text-[10px] text-muted-foreground shrink-0">$</span>
+                      <Input
+                        type="number" step="any" min={0}
+                        value={sub.value}
+                        onChange={(e) => updateSub(sub.id, "value", parseFloat(e.target.value) || 0)}
+                        className="h-6 w-20 bg-input/40 border-border/50 text-right text-xs font-mono tabular-nums rounded-md shrink-0"
+                      />
+                      <button onClick={() => removeSub(sub.id)} className="h-5 w-5 flex items-center justify-center text-muted-foreground/40 hover:text-destructive transition-colors shrink-0">
+                        <Trash2 className="h-3 w-3" />
+                      </button>
                     </div>
-                  </TechSubSection>
+                  ))}
+                  <Button variant="ghost" size="sm" onClick={addSub}
+                    className="h-6 text-xs text-muted-foreground border border-dashed border-border/50 hover:border-primary/40 hover:text-primary w-full mt-0.5">
+                    <Plus className="h-3 w-3 mr-1" /> Add Subcontractor
+                  </Button>
+                </div>
+              </TechSubSection>
 
-                  {/* Rental Equipment */}
-                  <TechSubSection
-                    title="Rental Equipment"
-                    summary={(liftTotal + addlRentalTotal) > 0 ? formatCurrency(liftTotal + addlRentalTotal) : undefined}
-                  >
-                    <div className="px-3 flex flex-col gap-1.5 pt-1">
-                      {/* Lift row */}
-                      <p className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider">Lift</p>
-                      <div className="flex items-center gap-1 flex-wrap">
-                        <Input
-                          type="number" step="1" min={0}
-                          value={rental.lift.numberOfLifts ?? 1}
-                          onChange={(e) => updateLift("numberOfLifts", parseFloat(e.target.value) || 0)}
-                          className="h-6 w-10 bg-input/40 border-border/50 text-right text-xs font-mono rounded-md shrink-0"
-                        />
-                        <span className="text-[10px] text-muted-foreground">×</span>
-                        <Input
-                          type="number" step="any" min={0}
-                          value={rental.lift.months}
-                          onChange={(e) => updateLift("months", parseFloat(e.target.value) || 0)}
-                          className="h-6 w-10 bg-input/40 border-border/50 text-right text-xs font-mono rounded-md shrink-0"
-                        />
-                        <span className="text-[10px] text-muted-foreground shrink-0">mo @$</span>
-                        <Input
-                          type="number" step="any" min={0}
-                          value={rental.lift.costPerMonth}
-                          onChange={(e) => updateLift("costPerMonth", parseFloat(e.target.value) || 0)}
-                          className="h-6 w-16 bg-input/40 border-border/50 text-right text-xs font-mono rounded-md shrink-0"
-                        />
-                      </div>
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={!!rental.lift.includeLiftAdder}
-                          onChange={(e) => updateLift("includeLiftAdder", e.target.checked)}
-                          className="h-3.5 w-3.5 rounded border-border/50 accent-primary cursor-pointer shrink-0"
-                        />
-                        <span className="text-xs text-muted-foreground/80">Include Lift Adder</span>
-                      </label>
-                      {/* Additional rental items */}
-                      {(rental.additionalItems ?? []).map((item) => (
-                        <div key={item.id} className="flex items-center gap-1">
-                          <Input
-                            value={item.name}
-                            onChange={(e) => updateRentalItem(item.id, "name", e.target.value)}
-                            placeholder="Item"
-                            className="h-6 flex-1 bg-input/40 border-border/50 text-xs rounded-md min-w-0"
-                          />
-                          <Input
-                            type="number" step="any" min={0}
-                            value={item.months}
-                            onChange={(e) => updateRentalItem(item.id, "months", parseFloat(e.target.value) || 0)}
-                            className="h-6 w-10 bg-input/40 border-border/50 text-right text-xs font-mono rounded-md shrink-0"
-                          />
-                          <span className="text-[10px] text-muted-foreground shrink-0">mo</span>
-                          <Input
-                            type="number" step="any" min={0}
-                            value={item.costPerMonth}
-                            onChange={(e) => updateRentalItem(item.id, "costPerMonth", parseFloat(e.target.value) || 0)}
-                            className="h-6 w-16 bg-input/40 border-border/50 text-right text-xs font-mono rounded-md shrink-0"
-                          />
-                          <button onClick={() => removeRentalItem(item.id)} className="h-5 w-5 flex items-center justify-center text-muted-foreground/40 hover:text-destructive transition-colors shrink-0">
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ))}
-                      <Button variant="ghost" size="sm" onClick={addRentalItem}
-                        className="h-6 text-xs text-muted-foreground border border-dashed border-border/50 hover:border-primary/40 hover:text-primary w-full mt-0.5">
-                        <Plus className="h-3 w-3 mr-1" /> Add Equipment
-                      </Button>
+              {/* Rental Equipment */}
+              <TechSubSection
+                title="Rental Equipment"
+                summary={(liftTotal + addlRentalTotal) > 0 ? formatCurrency(liftTotal + addlRentalTotal) : undefined}
+              >
+                <div className="px-3 flex flex-col gap-1.5 pt-1">
+                  <p className="text-[10px] font-medium text-muted-foreground/50 uppercase tracking-wider">Lift</p>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <Input
+                      type="number" step="1" min={0}
+                      value={rental.lift.numberOfLifts ?? 1}
+                      onChange={(e) => updateLift("numberOfLifts", parseFloat(e.target.value) || 0)}
+                      className="h-6 w-10 bg-input/40 border-border/50 text-right text-xs font-mono rounded-md shrink-0"
+                    />
+                    <span className="text-[10px] text-muted-foreground">×</span>
+                    <Input
+                      type="number" step="any" min={0}
+                      value={rental.lift.months}
+                      onChange={(e) => updateLift("months", parseFloat(e.target.value) || 0)}
+                      className="h-6 w-10 bg-input/40 border-border/50 text-right text-xs font-mono rounded-md shrink-0"
+                    />
+                    <span className="text-[10px] text-muted-foreground shrink-0">mo @$</span>
+                    <Input
+                      type="number" step="any" min={0}
+                      value={rental.lift.costPerMonth}
+                      onChange={(e) => updateLift("costPerMonth", parseFloat(e.target.value) || 0)}
+                      className="h-6 w-16 bg-input/40 border-border/50 text-right text-xs font-mono rounded-md shrink-0"
+                    />
+                  </div>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!!rental.lift.includeLiftAdder}
+                      onChange={(e) => updateLift("includeLiftAdder", e.target.checked)}
+                      className="h-3.5 w-3.5 rounded border-border/50 accent-primary cursor-pointer shrink-0"
+                    />
+                    <span className="text-xs text-muted-foreground/80">Include Lift Adder</span>
+                  </label>
+                  {(rental.additionalItems ?? []).map((item) => (
+                    <div key={item.id} className="flex items-center gap-1">
+                      <Input
+                        value={item.name}
+                        onChange={(e) => updateRentalItem(item.id, "name", e.target.value)}
+                        placeholder="Item"
+                        className="h-6 flex-1 bg-input/40 border-border/50 text-xs rounded-md min-w-0"
+                      />
+                      <Input
+                        type="number" step="any" min={0}
+                        value={item.months}
+                        onChange={(e) => updateRentalItem(item.id, "months", parseFloat(e.target.value) || 0)}
+                        className="h-6 w-10 bg-input/40 border-border/50 text-right text-xs font-mono rounded-md shrink-0"
+                      />
+                      <span className="text-[10px] text-muted-foreground shrink-0">mo</span>
+                      <Input
+                        type="number" step="any" min={0}
+                        value={item.costPerMonth}
+                        onChange={(e) => updateRentalItem(item.id, "costPerMonth", parseFloat(e.target.value) || 0)}
+                        className="h-6 w-16 bg-input/40 border-border/50 text-right text-xs font-mono rounded-md shrink-0"
+                      />
+                      <button onClick={() => removeRentalItem(item.id)} className="h-5 w-5 flex items-center justify-center text-muted-foreground/40 hover:text-destructive transition-colors shrink-0">
+                        <Trash2 className="h-3 w-3" />
+                      </button>
                     </div>
-                  </TechSubSection>
-                </>
-              )}
+                  ))}
+                  <Button variant="ghost" size="sm" onClick={addRentalItem}
+                    className="h-6 text-xs text-muted-foreground border border-dashed border-border/50 hover:border-primary/40 hover:text-primary w-full mt-0.5">
+                    <Plus className="h-3 w-3 mr-1" /> Add Equipment
+                  </Button>
+                </div>
+              </TechSubSection>
             </div>
           );
         })}
