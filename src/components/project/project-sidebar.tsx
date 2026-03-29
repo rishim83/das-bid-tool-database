@@ -578,21 +578,37 @@ export function ProjectSidebar({
                   onChange={(v) => onUpdateInstallTravel({ ...it, fuel: v })}
                   prefix="$"
                 />
-                {installTravelCalc && (
-                  <>
-                    {installTravelCalc.travelHours > 0 && (
+                {installTravelCalc && (() => {
+                  const travelDays = installTravelCalc.projectDays;
+                  const calendarDays = travelDays + Math.floor(travelDays / 5) * 2;
+                  return (
+                    <>
+                      {installTravelCalc.travelHours > 0 && (
+                        <DisplayRow
+                          label="Travel Hours"
+                          value={`${installTravelCalc.travelHours.toFixed(1)} h`}
+                        />
+                      )}
+                      {travelDays > 0 && (
+                        <DisplayRow
+                          label="Travel Days"
+                          value={`${travelDays.toFixed(1)} d`}
+                        />
+                      )}
+                      {calendarDays > 0 && (
+                        <DisplayRow
+                          label="Calendar Days (w/ weekends)"
+                          value={`${calendarDays.toFixed(1)} d`}
+                        />
+                      )}
                       <DisplayRow
-                        label="Travel Hours"
-                        value={`${installTravelCalc.travelHours.toFixed(1)} h`}
+                        label="Travel Labor"
+                        value={formatCurrency(installTravelCalc.travelLaborTotal)}
                       />
-                    )}
-                    <DisplayRow
-                      label="Travel Labor"
-                      value={formatCurrency(installTravelCalc.travelLaborTotal)}
-                    />
-                    <DisplayRow label="Total (w/ markup)" value={formatCurrency(installTravelCalc.markedUpTotal)} />
-                  </>
-                )}
+                      <DisplayRow label="Total (w/ markup)" value={formatCurrency(installTravelCalc.markedUpTotal)} />
+                    </>
+                  );
+                })()}
               </>
             );
           })()}
