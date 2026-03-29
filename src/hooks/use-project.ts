@@ -81,14 +81,15 @@ export function useProject(initialProject: Project) {
     [project.schedule, scheduleCalculated]
   );
 
-  // Total install labor hours across all enabled techs — uses effective hours
+  // Total install labor hours across all enabled techs — effective hours × labor safety
   const totalAllLaborHours = useMemo(() => {
+    const laborSafety = project.inputParameters.laborSafety ?? 1;
     return effectiveTechs
       .filter((t) => t.enabled)
       .reduce((sum, tech) => {
         return sum + Object.values(tech.installLaborHours).reduce((s, h) => s + (h || 0), 0);
-      }, 0);
-  }, [effectiveTechs]);
+      }, 0) * laborSafety;
+  }, [effectiveTechs, project.inputParameters.laborSafety]);
 
   // Calculate install travel (null when travelPercent = 0 → use old travelPerDay formula)
   const installTravelCalc: InstallTravelCalculated | null = useMemo(() => {
