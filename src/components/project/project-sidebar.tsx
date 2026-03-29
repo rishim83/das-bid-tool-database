@@ -161,9 +161,9 @@ function InlineField({
   step?: string;
 }) {
   return (
-    <div className="px-3 py-1.5">
-      <p className="text-[10.5px] text-muted-foreground/60 mb-1">{label}</p>
-      <div className="flex items-stretch rounded-md border border-border/50 bg-input/50 overflow-hidden focus-within:border-primary/40 transition-colors">
+    <div className="flex items-center justify-between px-3 py-1.5 gap-2">
+      <span className="text-[10.5px] text-muted-foreground/60 shrink-0">{label}</span>
+      <div className="flex items-stretch rounded-md border border-border/50 bg-input/50 overflow-hidden focus-within:border-primary/40 transition-colors shrink-0">
         {prefix && (
           <span className="flex items-center px-2 text-[11px] text-muted-foreground/50 bg-muted/20 border-r border-border/40 shrink-0">
             {prefix}
@@ -174,7 +174,7 @@ function InlineField({
           step={step}
           value={value}
           onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-          className="h-7 flex-1 min-w-0 border-0 shadow-none bg-transparent text-right text-xs font-mono tabular-nums focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="h-7 w-20 border-0 shadow-none bg-transparent text-right text-xs font-mono tabular-nums focus-visible:ring-0 focus-visible:ring-offset-0"
         />
         {suffix && (
           <span className="flex items-center px-2 text-[11px] text-muted-foreground/50 bg-muted/20 border-l border-border/40 shrink-0">
@@ -221,9 +221,39 @@ function DisplayRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-// ─── Flat field group (section label + children, no collapse) ───
+// ─── Field group — flat label or collapsible section ────────────
 
-function FieldGroup({ title, children }: { title: string; children: React.ReactNode }) {
+function FieldGroup({
+  title,
+  children,
+  collapsible = false,
+  defaultOpen = false,
+}: {
+  title: string;
+  children: React.ReactNode;
+  collapsible?: boolean;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const labelClass = "text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground/40";
+
+  if (collapsible) {
+    return (
+      <div className="mt-2 border-t border-border/20">
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="w-full flex items-center justify-between px-3 py-1.5 hover:bg-sidebar-accent/40 transition-colors"
+        >
+          <span className={labelClass}>{title}</span>
+          {open
+            ? <ChevronDown className="h-3 w-3 text-muted-foreground/40 shrink-0" />
+            : <ChevronRight className="h-3 w-3 text-muted-foreground/30 shrink-0" />}
+        </button>
+        {open && <div className="pb-1">{children}</div>}
+      </div>
+    );
+  }
+
   return (
     <div className="mt-2">
       <div className="mx-3 mb-1 pb-1 text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground/35 border-b border-border/25">
@@ -782,21 +812,29 @@ export function ProjectSidebar({
                 onClick={() => onOpenPanel(`input-values-${type}`)}
               />
 
-              {/* Labor */}
-              <FieldGroup title="Labor">
-                <InlineField
-                  label="Material Handling"
-                  value={tech.materialHandlingHours ?? 0}
-                  onChange={(v) => update({ materialHandlingHours: v })}
-                  suffix="hrs"
-                />
-                <InlineField
-                  label="Commissioning"
-                  value={tech.commissioningSupport ?? 0}
-                  onChange={(v) => update({ commissioningSupport: v })}
-                  suffix="hrs"
-                />
-                <div className="px-3 mt-1.5 flex flex-col gap-1.5">
+              {/* Inline fields */}
+              <InlineField
+                label="Material Handling"
+                value={tech.materialHandlingHours ?? 0}
+                onChange={(v) => update({ materialHandlingHours: v })}
+                suffix="hrs"
+              />
+              <InlineField
+                label="Commissioning"
+                value={tech.commissioningSupport ?? 0}
+                onChange={(v) => update({ commissioningSupport: v })}
+                suffix="hrs"
+              />
+              <InlineField
+                label="Water & Ice"
+                value={tech.waterAndIce ?? 0}
+                onChange={(v) => update({ waterAndIce: v })}
+                prefix="$"
+              />
+
+              {/* Additional Labor */}
+              <FieldGroup title="Additional Labor" collapsible>
+                <div className="px-3 pb-2 flex flex-col gap-1.5">
                   {additionalLabor.map((item) => (
                     <div key={item.id} className="flex items-center gap-1">
                       <Input
@@ -824,15 +862,9 @@ export function ProjectSidebar({
                 </div>
               </FieldGroup>
 
-              {/* Materials */}
-              <FieldGroup title="Materials">
-                <InlineField
-                  label="Water & Ice"
-                  value={tech.waterAndIce ?? 0}
-                  onChange={(v) => update({ waterAndIce: v })}
-                  prefix="$"
-                />
-                <div className="px-3 mt-1.5 flex flex-col gap-1.5">
+              {/* Additional Materials */}
+              <FieldGroup title="Additional Materials" collapsible>
+                <div className="px-3 pb-2 flex flex-col gap-1.5">
                   {additionalMaterials.map((item) => (
                     <div key={item.id} className="flex items-center gap-1">
                       <Input
@@ -861,8 +893,8 @@ export function ProjectSidebar({
               </FieldGroup>
 
               {/* Subcontractors */}
-              <FieldGroup title="Subcontractors">
-                <div className="px-3 mt-1 flex flex-col gap-1.5">
+              <FieldGroup title="Subcontractors" collapsible>
+                <div className="px-3 pb-2 flex flex-col gap-1.5">
                   {subs.map((sub) => (
                     <div key={sub.id} className="flex items-center gap-1">
                       <Input
@@ -891,8 +923,8 @@ export function ProjectSidebar({
               </FieldGroup>
 
               {/* Rental Equipment */}
-              <FieldGroup title="Rental Equipment">
-                <div className="px-3 mt-1 flex flex-col gap-1.5">
+              <FieldGroup title="Rental Equipment" collapsible>
+                <div className="px-3 pb-2 flex flex-col gap-1.5">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/40">Lift</p>
                   <div className="flex items-center gap-1 flex-wrap">
                     <Input
