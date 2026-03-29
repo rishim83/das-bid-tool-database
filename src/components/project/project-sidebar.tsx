@@ -591,8 +591,9 @@ export function ProjectSidebar({
                   value={it.perDiemRate}
                   onChange={(v) => onUpdateInstallTravel({ ...it, perDiemRate: v })}
                   prefix="$"
-                  total={installTravelCalc ? `= ${formatCurrency(installTravelCalc.perDiemTotal)} (×${guys})` : undefined}
-                  tooltip={`Rate/day × Calendar Days (w/ weekends) × ${guys} techs`}
+                  tooltip={installTravelCalc
+                    ? `Rate/day × Calendar Days (w/ weekends) × ${guys} techs = ${formatCurrency(installTravelCalc.perDiemTotal)}`
+                    : `Rate/day × Calendar Days (w/ weekends) × ${guys} techs`}
                 />
                 <InlineField
                   label="Round Trips"
@@ -606,24 +607,27 @@ export function ProjectSidebar({
                   value={it.airfarePricePerTrip}
                   onChange={(v) => onUpdateInstallTravel({ ...it, airfarePricePerTrip: v })}
                   prefix="$"
-                  total={installTravelCalc ? `= ${formatCurrency(installTravelCalc.airfareTotal)} (×${guys})` : undefined}
-                  tooltip={`Price/trip × ${it.roundTrips ?? 1} round trips × ${guys} techs`}
+                  tooltip={installTravelCalc
+                    ? `Price/trip × ${it.roundTrips ?? 1} round trips × ${guys} techs = ${formatCurrency(installTravelCalc.airfareTotal)}`
+                    : `Price/trip × ${it.roundTrips ?? 1} round trips × ${guys} techs`}
                 />
                 <InlineField
                   label="Lodging / Night"
                   value={it.lodgingRatePerNight}
                   onChange={(v) => onUpdateInstallTravel({ ...it, lodgingRatePerNight: v })}
                   prefix="$"
-                  total={installTravelCalc ? `= ${formatCurrency(installTravelCalc.lodgingTotal)} (×${guys})` : undefined}
-                  tooltip={`Rate/night × Calendar Days (w/ weekends) × ${guys} techs`}
+                  tooltip={installTravelCalc
+                    ? `Rate/night × Calendar Days (w/ weekends) × ${guys} techs = ${formatCurrency(installTravelCalc.lodgingTotal)}`
+                    : `Rate/night × Calendar Days (w/ weekends) × ${guys} techs`}
                 />
                 <InlineField
                   label="Car Rental / Day"
                   value={it.carRentalPerDay ?? 0}
                   onChange={(v) => onUpdateInstallTravel({ ...it, carRentalPerDay: v })}
                   prefix="$"
-                  total={installTravelCalc ? `= ${formatCurrency(installTravelCalc.carRentalTotal)} (×${(guys / 2).toFixed(1)})` : undefined}
-                  tooltip={`Rate/day × Calendar Days (w/ weekends) × ${(guys / 2).toFixed(1)} cars (# techs ÷ 2)`}
+                  tooltip={installTravelCalc
+                    ? `Rate/day × Calendar Days (w/ weekends) × ${(guys / 2).toFixed(1)} cars (# techs ÷ 2) = ${formatCurrency(installTravelCalc.carRentalTotal)}`
+                    : `Rate/day × Calendar Days (w/ weekends) × ${(guys / 2).toFixed(1)} cars (# techs ÷ 2)`}
                 />
                 <InlineField
                   label="Fuel (flat)"
