@@ -340,6 +340,21 @@ export function ParametersPanel({
             </span>
           </div>
 
+          {/* Round Trips */}
+          <div className="flex items-center justify-between py-2 px-3">
+            <span className="text-sm text-muted-foreground">Round Trips</span>
+            <div className="flex items-center gap-1.5">
+              <Input
+                type="number"
+                step="1"
+                min={0}
+                value={installTravel.roundTrips ?? 1}
+                onChange={(e) => updateInstallTravel("roundTrips", parseFloat(e.target.value) || 0)}
+                className="h-7 w-24 bg-input/40 border-border/50 text-right text-sm font-mono tabular-nums rounded-md"
+              />
+            </div>
+          </div>
+
           {/* Airfare */}
           <div className="flex items-center justify-between py-2 px-3">
             <span className="text-sm text-muted-foreground">Airfare</span>

@@ -573,6 +573,12 @@ export function ProjectSidebar({
                   prefix="$"
                 />
                 <InlineField
+                  label="Round Trips"
+                  value={it.roundTrips ?? 1}
+                  onChange={(v) => onUpdateInstallTravel({ ...it, roundTrips: Math.max(0, v) })}
+                  step="1"
+                />
+                <InlineField
                   label="Airfare / Trip"
                   value={it.airfarePricePerTrip}
                   onChange={(v) => onUpdateInstallTravel({ ...it, airfarePricePerTrip: v })}
@@ -625,7 +631,7 @@ export function ProjectSidebar({
                       <DisplayRow
                         label="Travel Labor"
                         value={formatCurrency(installTravelCalc.travelLaborTotal)}
-                        tooltip={`Round Trips × Buy Rate × 16  |  Round Trips = ceil(Travel Hours ÷ 100)`}
+                        tooltip="Round Trips × Buy Rate × 16  (2 travel days × 8 hrs per round trip)"
                       />
                       <DisplayRow
                         label="Total (w/ markup)"

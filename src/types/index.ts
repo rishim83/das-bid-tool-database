@@ -36,6 +36,7 @@ export interface Schedule {
 export interface InstallTravelConfig {
   travelPercent: number;        // % of total all-labor hours → travel hours
   perDiemRate: number;          // $ per project day, default 60
+  roundTrips: number;           // user-specified number of round trips
   airfarePricePerTrip: number;  // $ per round trip, default 500
   lodgingRatePerNight: number;  // $ per night, default 175
   carRentalPerDay: number;      // $ per project day, default 0
@@ -303,6 +304,7 @@ export const DEFAULT_SCHEDULE: Schedule = {
 export const DEFAULT_INSTALL_TRAVEL: InstallTravelConfig = {
   travelPercent: 0,
   perDiemRate: 60,
+  roundTrips: 1,
   airfarePricePerTrip: 500,
   lodgingRatePerNight: 175,
   carRentalPerDay: 0,

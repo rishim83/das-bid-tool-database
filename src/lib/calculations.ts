@@ -37,7 +37,7 @@ export function calculateInstallTravel(
     numberOfGuys > 0 && hoursPerDay > 0
       ? travelHours / hoursPerDay / numberOfGuys
       : 0;
-  const roundTrips = Math.ceil(travelHours / 100);
+  const roundTrips = config.roundTrips ?? 1;
 
   const perDiemTotal = projectDays * config.perDiemRate;
   const travelLaborTotal = roundTrips * buyHourlyRate * 16; // 2 travel days × 8 hrs per round trip
