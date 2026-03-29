@@ -47,6 +47,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ParametersPanel } from "./parameters-panel";
 import { ColoManager } from "./colo-manager";
 import { InputValuesTable } from "./input-values-table";
@@ -212,12 +213,23 @@ function CheckboxField({
 
 // ─── Read-only display row ───────────────────────────────────────
 
-function DisplayRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between px-3 py-1.5 bg-muted/20">
-      <span className="text-xs text-muted-foreground/70">{label}</span>
+function DisplayRow({ label, value, tooltip }: { label: string; value: string; tooltip?: string }) {
+  const inner = (
+    <div className={`flex items-center justify-between px-3 py-1.5 bg-muted/20 ${tooltip ? "cursor-help" : ""}`}>
+      <span className={`text-xs text-muted-foreground/70 ${tooltip ? "underline decoration-dotted underline-offset-2" : ""}`}>
+        {label}
+      </span>
       <span className="text-xs font-mono font-semibold tabular-nums">{value}</span>
     </div>
+  );
+  if (!tooltip) return inner;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{inner}</TooltipTrigger>
+      <TooltipContent side="right" sideOffset={8}>
+        <span className="font-mono text-[11px]">{tooltip}</span>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -588,31 +600,39 @@ export function ProjectSidebar({
                   const travelDays = installTravelCalc.projectDays;
                   const calendarDays = travelDays + Math.floor(travelDays / 5) * 2;
                   return (
-                    <>
+                    <TooltipProvider>
                       {installTravelCalc.travelHours > 0 && (
                         <DisplayRow
                           label="Travel Hours"
                           value={`${installTravelCalc.travelHours.toFixed(1)} h`}
+                          tooltip="Total Labor Hours × Travel %"
                         />
                       )}
                       {travelDays > 0 && (
                         <DisplayRow
                           label="Travel Days"
                           value={`${travelDays.toFixed(1)} d`}
+                          tooltip="Travel Hours ÷ Hours/Day ÷ # of Guys"
                         />
                       )}
                       {calendarDays > 0 && (
                         <DisplayRow
                           label="Calendar Days (w/ weekends)"
                           value={`${calendarDays.toFixed(1)} d`}
+                          tooltip="Travel Days + floor(Travel Days ÷ 5) × 2"
                         />
                       )}
                       <DisplayRow
                         label="Travel Labor"
                         value={formatCurrency(installTravelCalc.travelLaborTotal)}
+                        tooltip={`Round Trips × Buy Rate × 16  |  Round Trips = ceil(Travel Hours ÷ 100)`}
                       />
-                      <DisplayRow label="Total (w/ markup)" value={formatCurrency(installTravelCalc.markedUpTotal)} />
-                    </>
+                      <DisplayRow
+                        label="Total (w/ markup)"
+                        value={formatCurrency(installTravelCalc.markedUpTotal)}
+                        tooltip="(Per Diem + Travel Labor + Airfare + Lodging + Car Rental + Fuel) × T&I Markup"
+                      />
+                    </TooltipProvider>
                   );
                 })()}
               </>
