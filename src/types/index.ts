@@ -38,6 +38,7 @@ export interface InstallTravelConfig {
   perDiemRate: number;          // $ per project day, default 60
   airfarePricePerTrip: number;  // $ per round trip, default 500
   lodgingRatePerNight: number;  // $ per night, default 175
+  carRentalPerDay: number;      // $ per project day, default 0
   fuel: number;                 // flat $ amount, default 500
 }
 
@@ -49,6 +50,7 @@ export interface InstallTravelCalculated {
   travelLaborTotal: number;
   airfareTotal: number;
   lodgingTotal: number;
+  carRentalTotal: number;
   fuelTotal: number;
   rawTotal: number;
   markedUpTotal: number;
@@ -303,6 +305,7 @@ export const DEFAULT_INSTALL_TRAVEL: InstallTravelConfig = {
   perDiemRate: 60,
   airfarePricePerTrip: 500,
   lodgingRatePerNight: 175,
+  carRentalPerDay: 0,
   fuel: 500,
 };
 

@@ -43,9 +43,10 @@ export function calculateInstallTravel(
   const travelLaborTotal = roundTrips * buyHourlyRate;
   const airfareTotal = roundTrips * config.airfarePricePerTrip;
   const lodgingTotal = projectDays * config.lodgingRatePerNight;
+  const carRentalTotal = projectDays * (config.carRentalPerDay ?? 0);
   const fuelTotal = config.fuel;
 
-  const rawTotal = perDiemTotal + travelLaborTotal + airfareTotal + lodgingTotal + fuelTotal;
+  const rawTotal = perDiemTotal + travelLaborTotal + airfareTotal + lodgingTotal + carRentalTotal + fuelTotal;
   const markedUpTotal = rawTotal * travelIndirectMarkup;
 
   return {
@@ -56,6 +57,7 @@ export function calculateInstallTravel(
     travelLaborTotal,
     airfareTotal,
     lodgingTotal,
+    carRentalTotal,
     fuelTotal,
     rawTotal,
     markedUpTotal,

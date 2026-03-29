@@ -382,6 +382,27 @@ export function ParametersPanel({
             </div>
           </div>
 
+          {/* Car Rental */}
+          <div className="flex items-center justify-between py-2 px-3">
+            <span className="text-sm text-muted-foreground">Car Rental</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">$</span>
+              <Input
+                type="number"
+                step="any"
+                value={installTravel.carRentalPerDay ?? 0}
+                onChange={(e) => updateInstallTravel("carRentalPerDay", parseFloat(e.target.value) || 0)}
+                className="h-7 w-24 bg-input/40 border-border/50 text-right text-sm font-mono tabular-nums rounded-md"
+              />
+              <span className="text-xs text-muted-foreground">/day</span>
+              {installTravelCalc && (
+                <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
+                  = {formatCurrency(installTravelCalc.carRentalTotal)}
+                </span>
+              )}
+            </div>
+          </div>
+
           {/* Fuel */}
           <div className="flex items-center justify-between py-2 px-3">
             <span className="text-sm text-muted-foreground">Fuel</span>

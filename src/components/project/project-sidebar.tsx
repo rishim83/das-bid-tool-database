@@ -573,6 +573,12 @@ export function ProjectSidebar({
                   prefix="$"
                 />
                 <InlineField
+                  label="Car Rental / Day"
+                  value={it.carRentalPerDay ?? 0}
+                  onChange={(v) => onUpdateInstallTravel({ ...it, carRentalPerDay: v })}
+                  prefix="$"
+                />
+                <InlineField
                   label="Fuel (flat)"
                   value={it.fuel}
                   onChange={(v) => onUpdateInstallTravel({ ...it, fuel: v })}
