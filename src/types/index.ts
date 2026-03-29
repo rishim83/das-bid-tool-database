@@ -46,6 +46,7 @@ export interface InstallTravelConfig {
 export interface InstallTravelCalculated {
   travelHours: number;
   projectDays: number;
+  calendarDays: number;
   roundTrips: number;
   perDiemTotal: number;
   travelLaborTotal: number;

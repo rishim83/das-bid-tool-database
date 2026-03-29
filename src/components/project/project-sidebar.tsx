@@ -153,6 +153,7 @@ function InlineField({
   prefix,
   suffix,
   step = "any",
+  total,
 }: {
   label: string;
   value: number;
@@ -160,11 +161,14 @@ function InlineField({
   prefix?: string;
   suffix?: string;
   step?: string;
+  total?: string;
 }) {
   return (
     <div className="flex items-center justify-between px-3 py-1.5 gap-2">
       <span className="text-[10.5px] text-muted-foreground/60 shrink-0">{label}</span>
-      <div className="flex items-stretch rounded-md border border-border/50 bg-input/50 overflow-hidden focus-within:border-primary/40 transition-colors shrink-0">
+      <div className="flex items-center gap-1.5 shrink-0">
+      {total && <span className="text-[10px] font-mono tabular-nums text-muted-foreground/40">{total}</span>}
+      <div className="flex items-stretch rounded-md border border-border/50 bg-input/50 overflow-hidden focus-within:border-primary/40 transition-colors">
         {prefix && (
           <span className="flex items-center px-2 text-[11px] text-muted-foreground/50 bg-muted/20 border-r border-border/40 shrink-0">
             {prefix}
@@ -182,6 +186,7 @@ function InlineField({
             {suffix}
           </span>
         )}
+      </div>
       </div>
     </div>
   );
@@ -571,6 +576,7 @@ export function ProjectSidebar({
                   value={it.perDiemRate}
                   onChange={(v) => onUpdateInstallTravel({ ...it, perDiemRate: v })}
                   prefix="$"
+                  total={installTravelCalc ? `= ${formatCurrency(installTravelCalc.perDiemTotal)}` : undefined}
                 />
                 <InlineField
                   label="Round Trips"
@@ -583,18 +589,21 @@ export function ProjectSidebar({
                   value={it.airfarePricePerTrip}
                   onChange={(v) => onUpdateInstallTravel({ ...it, airfarePricePerTrip: v })}
                   prefix="$"
+                  total={installTravelCalc ? `= ${formatCurrency(installTravelCalc.airfareTotal)}` : undefined}
                 />
                 <InlineField
                   label="Lodging / Night"
                   value={it.lodgingRatePerNight}
                   onChange={(v) => onUpdateInstallTravel({ ...it, lodgingRatePerNight: v })}
                   prefix="$"
+                  total={installTravelCalc ? `= ${formatCurrency(installTravelCalc.lodgingTotal)}` : undefined}
                 />
                 <InlineField
                   label="Car Rental / Day"
                   value={it.carRentalPerDay ?? 0}
                   onChange={(v) => onUpdateInstallTravel({ ...it, carRentalPerDay: v })}
                   prefix="$"
+                  total={installTravelCalc ? `= ${formatCurrency(installTravelCalc.carRentalTotal)}` : undefined}
                 />
                 <InlineField
                   label="Fuel (flat)"
@@ -604,7 +613,7 @@ export function ProjectSidebar({
                 />
                 {installTravelCalc && (() => {
                   const travelDays = installTravelCalc.projectDays;
-                  const calendarDays = travelDays + Math.floor(travelDays / 5) * 2;
+                  const calendarDays = installTravelCalc.calendarDays;
                   return (
                     <TooltipProvider>
                       {installTravelCalc.travelHours > 0 && (
