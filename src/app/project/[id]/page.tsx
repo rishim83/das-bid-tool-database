@@ -607,7 +607,7 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
     const ws2: any = wb.addWorksheet("BOM Report");
     ws2.columns = [
       { width: 14 }, { width: 36 }, { width: 7 }, { width: 7 }, { width: 7 },
-      { width: 18 }, { width: 16 }, { width: 18 }, { width: 18 },
+      { width: 18 }, { width: 16 }, { width: 18 }, { width: 18 }, { width: 40 },
     ];
 
     let hasBOM = false;
@@ -621,14 +621,14 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
       // Tech section header (tech colour)
       const t2Fill = TECH_FILL[tech.type] ?? NAVY_FILL;
       const thRow = ws2.addRow([TECHNOLOGY_LABELS[tech.type]]);
-      ws2.mergeCells(thRow.number, 1, thRow.number, 9);
+      ws2.mergeCells(thRow.number, 1, thRow.number, 10);
       thRow.getCell(1).fill = t2Fill;
       thRow.getCell(1).font = { bold: true, size: 13, color: WHITE };
       thRow.getCell(1).alignment = { vertical: "middle", horizontal: "left", indent: 1 };
       thRow.height = 26;
 
       // Column headers
-      const hRow = ws2.addRow(["Part #", "Description / Manufacturer", "QTY", "", "", "Equip Unit ($)", "Equip Total ($)", "Labor Hrs/Unit", "Total Labor Hrs"]);
+      const hRow = ws2.addRow(["Part #", "Description / Manufacturer", "QTY", "", "", "Equip Unit ($)", "Equip Total ($)", "Labor Hrs/Unit", "Total Labor Hrs", "Labor Code Description"]);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       hRow.eachCell({ includeEmpty: true }, (cell: any, cn: number) => {
         cell.fill = BLUE_FILL;
@@ -651,6 +651,7 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
           row.totalEquipPrice || null,
           row.unitLaborHrs || null,
           row.totalLaborHrs || null,
+          row.laborCodeDesc || null,
         ]);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         r.eachCell({ includeEmpty: true }, (cell: any, cn: number) => {
@@ -685,7 +686,7 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
 
     if (!hasBOM) {
       const nRow = ws2.addRow(["No BOM data available. Import and apply a BOM on the project page first, then re-export."]);
-      ws2.mergeCells(nRow.number, 1, nRow.number, 9);
+      ws2.mergeCells(nRow.number, 1, nRow.number, 10);
       nRow.getCell(1).font = { italic: true, color: GRAY, size: 10 };
       nRow.height = 20;
     }

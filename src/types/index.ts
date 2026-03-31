@@ -116,6 +116,7 @@ export interface BOMReportRow {
   unitLaborHrs: number;
   totalEquipPrice: number;
   totalLaborHrs: number;
+  laborCodeDesc?: string; // human-readable labor code description(s) from DB
 }
 
 // ─── Technology Configuration ───────────────────────────────────
