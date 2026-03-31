@@ -26,7 +26,7 @@ const TECH_ACCENT_HEX: Record<string, string> = {
   PUBLIC_SAFETY: "#ef4444",
   ROIP: "#f97316",
 };
-import { formatCurrency } from "@/lib/calculations";
+import { formatCurrency, calculateInstallTravel, computeEffectiveLaborHoursPerColo } from "@/lib/calculations";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -353,6 +353,7 @@ export function ProjectSidebar({
 }: Props) {
   const ip = project.inputParameters;
   const colos = project.coloSites;
+  const [travelTechView, setTravelTechView] = useState<"ALL" | TechnologyType>("ALL");
 
   // ── Summary helpers ─────────────────────────────────────────
   const coloSummary = colos.length === 0
@@ -650,14 +651,72 @@ export function ProjectSidebar({
                   tooltip="Flat fuel cost added to travel total"
                 />
                 {installTravelCalc && (() => {
-                  const travelDays = installTravelCalc.projectDays;
-                  const calendarDays = installTravelCalc.calendarDays;
+                  const it = project.installTravel ?? DEFAULT_INSTALL_TRAVEL;
+                  const ip = project.inputParameters;
+                  const hpd = ip.hoursPerDay ?? 8;
+                  const numGuys = fullSchedule.numberOfGuys;
+                  const laborSafety = ip.laborSafety ?? 1;
+
+                  // Enabled techs with their effective hours
+                  const enabledTechs = project.technologies.filter((t) => t.enabled);
+                  const techHoursMap = enabledTechs.map((t) => {
+                    const eff = computeEffectiveLaborHoursPerColo(t, psd, numGuys, hpd);
+                    return {
+                      type: t.type,
+                      hours: Object.values(eff).reduce((s, h) => s + (h || 0), 0) * laborSafety,
+                    };
+                  });
+                  const totalHours = techHoursMap.reduce((s, t) => s + t.hours, 0);
+
+                  // Toggle options: All + each enabled tech
+                  const toggleOptions: Array<"ALL" | TechnologyType> = [
+                    "ALL",
+                    ...enabledTechs.map((t) => t.type as TechnologyType),
+                  ];
+
+                  // Compute the calc for the selected view
+                  const selectedHours = travelTechView === "ALL"
+                    ? totalHours
+                    : (techHoursMap.find((t) => t.type === travelTechView)?.hours ?? 0);
+
+                  const viewCalc = selectedHours > 0
+                    ? calculateInstallTravel(
+                        it,
+                        selectedHours,
+                        hpd,
+                        numGuys,
+                        ip.travelIndirectMarkup ?? 1.23,
+                        ip.buyHourlyRate ?? 55
+                      )
+                    : null;
+
+                  const travelDays = viewCalc?.projectDays ?? 0;
+                  const calendarDays = viewCalc?.calendarDays ?? 0;
+
                   return (
                     <TooltipProvider>
-                      {installTravelCalc.travelHours > 0 && (
+                      {/* Tech toggle */}
+                      {toggleOptions.length > 2 && (
+                        <div className="flex gap-1 px-3 pt-2 pb-1 flex-wrap">
+                          {toggleOptions.map((opt) => (
+                            <button
+                              key={opt}
+                              onClick={() => setTravelTechView(opt)}
+                              className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide transition-colors ${
+                                travelTechView === opt
+                                  ? "bg-primary/20 text-primary border border-primary/30"
+                                  : "bg-muted/30 text-muted-foreground/60 border border-border/30 hover:bg-muted/50"
+                              }`}
+                            >
+                              {opt === "ALL" ? "All" : opt === "PUBLIC_SAFETY" ? "PS" : opt === "ROIP" ? "RoIP" : opt}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {viewCalc && viewCalc.travelHours > 0 && (
                         <DisplayRow
                           label="Travel Hours"
-                          value={`${installTravelCalc.travelHours.toFixed(1)} h`}
+                          value={`${viewCalc.travelHours.toFixed(1)} h`}
                           tooltip="Total Labor Hours × Travel %"
                         />
                       )}
@@ -675,21 +734,25 @@ export function ProjectSidebar({
                           tooltip="Travel Days + floor(Travel Days ÷ 5) × 2"
                         />
                       )}
-                      <DisplayRow
-                        label="Travel Labor"
-                        value={formatCurrency(installTravelCalc.travelLaborTotal)}
-                        tooltip="Round Trips × Cost Rate × 16  (2 travel days × 8 hrs per round trip)"
-                      />
-                      <DisplayRow
-                        label="Subtotal"
-                        value={formatCurrency(installTravelCalc.rawTotal)}
-                        tooltip="(Per Diem + Lodging) × Cal Days (w/ weekends) × # Guys  |  Airfare × Round Trips × # Guys  |  Car Rental × Cal Days (w/ weekends) × (# Guys ÷ 2)  |  + Travel Labor + Fuel"
-                      />
-                      <DisplayRow
-                        label="Total (w/ markup)"
-                        value={formatCurrency(installTravelCalc.markedUpTotal)}
-                        tooltip={`Subtotal × ${project.inputParameters.travelIndirectMarkup ?? 1.23} (T&I Markup)`}
-                      />
+                      {viewCalc && (
+                        <>
+                          <DisplayRow
+                            label="Travel Labor"
+                            value={formatCurrency(viewCalc.travelLaborTotal)}
+                            tooltip="Round Trips × Cost Rate × 16  (2 travel days × 8 hrs per round trip)"
+                          />
+                          <DisplayRow
+                            label="Subtotal"
+                            value={formatCurrency(viewCalc.rawTotal)}
+                            tooltip="(Per Diem + Lodging) × Cal Days (w/ weekends) × # Guys  |  Airfare × Round Trips × # Guys  |  Car Rental × Cal Days (w/ weekends) × (# Guys ÷ 2)  |  + Travel Labor + Fuel"
+                          />
+                          <DisplayRow
+                            label="Total (w/ markup)"
+                            value={formatCurrency(viewCalc.markedUpTotal)}
+                            tooltip={`Subtotal × ${ip.travelIndirectMarkup ?? 1.23} (T&I Markup)`}
+                          />
+                        </>
+                      )}
                     </TooltipProvider>
                   );
                 })()}
