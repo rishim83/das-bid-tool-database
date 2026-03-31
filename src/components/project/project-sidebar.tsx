@@ -211,10 +211,12 @@ function CheckboxField({
   label,
   checked,
   onChange,
+  tooltip,
 }: {
   label: string;
   checked: boolean;
   onChange: (v: boolean) => void;
+  tooltip?: string;
 }) {
   return (
     <label className="flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-sidebar-accent/50 transition-colors">
@@ -224,7 +226,18 @@ function CheckboxField({
         onChange={(e) => onChange(e.target.checked)}
         className="h-3.5 w-3.5 rounded border-border/50 accent-primary cursor-pointer shrink-0"
       />
-      <span className="text-xs text-foreground/80">{label}</span>
+      {tooltip ? (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="text-xs text-foreground/80 cursor-help border-b border-dashed border-muted-foreground/30">{label}</span>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="max-w-[220px] text-xs">{tooltip}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ) : (
+        <span className="text-xs text-foreground/80">{label}</span>
+      )}
     </label>
   );
 }
@@ -726,16 +739,19 @@ export function ProjectSidebar({
             label="Shuttle Services"
             checked={!!psd.extras?.shuttleServices}
             onChange={(v) => onUpdateProjectSpecificDetails({ ...psd, extras: { ...psd.extras, shuttleServices: v } })}
+            tooltip="Adds 1 hr per project day (Base Hours ÷ Hours/Day)"
           />
           <CheckboxField
             label="Stretch & Flex"
             checked={!!psd.extras?.stretchAndFlex}
             onChange={(v) => onUpdateProjectSpecificDetails({ ...psd, extras: { ...psd.extras, stretchAndFlex: v } })}
+            tooltip="Adds 0.5 hrs per project day (Base Hours ÷ Hours/Day × 0.5)"
           />
           <CheckboxField
             label="Lift Spotters"
             checked={!!psd.extras?.liftSpotters}
             onChange={(v) => onUpdateProjectSpecificDetails({ ...psd, extras: { ...psd.extras, liftSpotters: v } })}
+            tooltip="Adds 65% of Base Hours ÷ # of Guys"
           />
           <InlineField
             label="Composite Cleanup"
