@@ -651,11 +651,11 @@ export function ProjectSidebar({
                   tooltip="Flat fuel cost added to travel total"
                 />
                 {installTravelCalc && (() => {
-                  const it = project.installTravel ?? DEFAULT_INSTALL_TRAVEL;
-                  const ip = project.inputParameters;
-                  const hpd = ip.hoursPerDay ?? 8;
+                  const itCfg = project.installTravel ?? DEFAULT_INSTALL_TRAVEL;
+                  const ipCfg = project.inputParameters;
+                  const hpd = ipCfg.hoursPerDay ?? 8;
                   const numGuys = fullSchedule.numberOfGuys;
-                  const laborSafety = ip.laborSafety ?? 1;
+                  const laborSafety = ipCfg.laborSafety ?? 1;
 
                   // Enabled techs with their effective hours
                   const enabledTechs = project.technologies.filter((t) => t.enabled);
@@ -674,29 +674,30 @@ export function ProjectSidebar({
                     ...enabledTechs.map((t) => t.type as TechnologyType),
                   ];
 
-                  // Compute the calc for the selected view
-                  const selectedHours = travelTechView === "ALL"
-                    ? totalHours
-                    : (techHoursMap.find((t) => t.type === travelTechView)?.hours ?? 0);
-
-                  const viewCalc = selectedHours > 0
-                    ? calculateInstallTravel(
-                        it,
-                        selectedHours,
-                        hpd,
-                        numGuys,
-                        ip.travelIndirectMarkup ?? 1.23,
-                        ip.buyHourlyRate ?? 55
-                      )
-                    : null;
+                  // For ALL: use the already-computed installTravelCalc prop directly
+                  // For per-tech: recompute with that tech's proportional hours
+                  const viewCalc = travelTechView === "ALL"
+                    ? installTravelCalc
+                    : (() => {
+                        const techHours = techHoursMap.find((t) => t.type === travelTechView)?.hours ?? 0;
+                        if (techHours <= 0 || totalHours <= 0) return null;
+                        return calculateInstallTravel(
+                          itCfg,
+                          techHours,
+                          hpd,
+                          numGuys,
+                          ipCfg.travelIndirectMarkup ?? 1.23,
+                          ipCfg.buyHourlyRate ?? 55
+                        );
+                      })();
 
                   const travelDays = viewCalc?.projectDays ?? 0;
                   const calendarDays = viewCalc?.calendarDays ?? 0;
 
                   return (
                     <TooltipProvider>
-                      {/* Tech toggle */}
-                      {toggleOptions.length > 2 && (
+                      {/* Tech toggle — always show when at least one tech is enabled */}
+                      {toggleOptions.length > 1 && (
                         <div className="flex gap-1 px-3 pt-2 pb-1 flex-wrap">
                           {toggleOptions.map((opt) => (
                             <button
@@ -749,7 +750,7 @@ export function ProjectSidebar({
                           <DisplayRow
                             label="Total (w/ markup)"
                             value={formatCurrency(viewCalc.markedUpTotal)}
-                            tooltip={`Subtotal × ${ip.travelIndirectMarkup ?? 1.23} (T&I Markup)`}
+                            tooltip={`Subtotal × ${ipCfg.travelIndirectMarkup ?? 1.23} (T&I Markup)`}
                           />
                         </>
                       )}
