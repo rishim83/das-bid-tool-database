@@ -72,7 +72,7 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
       liftSpotters: liftHours,
     };
 
-    return { type, totalHours, contingencyHours, billedHours, totalDays, totalWeeks, breakdown: bd, dynBreakdown };
+    return { type, totalHours, contingencyHours, billedHours, totalDays, totalWeeks, dynBreakdown };
   });
 
   // Only show columns for enabled technologies
