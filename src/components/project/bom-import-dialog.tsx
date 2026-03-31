@@ -78,7 +78,10 @@ export function BomImportDialog({
   const [showBreakdown, setShowBreakdown] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load database when dialog opens
+  // Load database on mount and whenever dialog opens
+  useEffect(() => {
+    loadDatabase().then(setDb);
+  }, []);
   useEffect(() => {
     if (open) loadDatabase().then(setDb);
   }, [open]);
@@ -381,6 +384,16 @@ export function BomImportDialog({
 
   const canDownload = !!analysis || (tech.bomReportRows?.length ?? 0) > 0;
 
+  const buildLaborCodesRows = (): (string | number)[][] => {
+    const codes = db?.laborCodes ?? [];
+    if (codes.length === 0) return [];
+    return [
+      [],
+      ["Labor Codes", "Description", "Hours / Unit"],
+      ...codes.map((lc) => [lc.code, lc.description, lc.hoursPerUnit]),
+    ];
+  };
+
   const handleDownloadFromStored = () => {
     const rows = tech.bomReportRows ?? [];
     const header = [
@@ -393,7 +406,7 @@ export function BomImportDialog({
       row.unitEquipPrice, row.unitLaborHrs, "",
       row.totalEquipPrice, row.totalLaborHrs,
     ]);
-    const ws = XLSX.utils.aoa_to_sheet([header, ...dataRows]);
+    const ws = XLSX.utils.aoa_to_sheet([header, ...dataRows, ...buildLaborCodesRows()]);
     ws["!cols"] = [
       { wch: 22 }, { wch: 28 }, { wch: 4 }, { wch: 6 }, { wch: 4 }, { wch: 4 },
       { wch: 22 }, { wch: 22 }, { wch: 18 }, { wch: 20 }, { wch: 18 },
@@ -579,7 +592,7 @@ export function BomImportDialog({
       ] : []),
     ];
 
-    const ws = XLSX.utils.aoa_to_sheet([header, ...dataRows]);
+    const ws = XLSX.utils.aoa_to_sheet([header, ...dataRows, ...buildLaborCodesRows()]);
     // Set column widths: A, B, C, D, E, F, G, H, I
     ws["!cols"] = [
       { wch: 22 }, { wch: 28 }, { wch: 4 }, { wch: 6 }, { wch: 4 }, { wch: 4 },
