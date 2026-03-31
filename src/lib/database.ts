@@ -58,7 +58,7 @@ function getRawRows(ws: XLSX.WorkSheet): string[][] {
 //
 // Sheet 1 (BOM sheet):
 //   Row 1: Manufacturer | Item | Part Number | Install Code | Install Code 2 |
-//          Install Code 3 | Install Code 4 | Description | Material Unit Price
+//          Install Code 3 | Install Code 4 | Install Code 5 | Description | Material Unit Price
 //
 // Sheet 2 (Labor sheet):
 //   Row 1: CODE | Task | Unit | Hours
@@ -68,6 +68,7 @@ const INSTALL_CODE_COLS = [
   "install code 2",
   "install code 3",
   "install code 4",
+  "install code 5",
 ];
 
 // ─── Parser ───────────────────────────────────────────────────────
