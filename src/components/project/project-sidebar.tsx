@@ -951,6 +951,20 @@ export function ProjectSidebar({
           const removeSub = (id: string) =>
             update({ subContractors: subs.filter((s) => s.id !== id) });
 
+          const rfItems = tech.rfLineItems ?? [];
+          const addRFItem = () =>
+            update({ rfLineItems: [...rfItems, { id: uuid(), description: "New Item", values: {} }] });
+          const updateRFItem = (id: string, field: string, val: string | number, coloId?: string) => {
+            if (field === "description") {
+              update({ rfLineItems: rfItems.map((i) => i.id === id ? { ...i, description: String(val) } : i) });
+            } else if (coloId) {
+              update({ rfLineItems: rfItems.map((i) => i.id === id ? { ...i, values: { ...i.values, [coloId]: Number(val) } } : i) });
+            }
+          };
+          const removeRFItem = (id: string) =>
+            update({ rfLineItems: rfItems.filter((i) => i.id !== id) });
+          const rfTotal = rfItems.reduce((s, i) => s + Object.values(i.values).reduce((vs, v) => vs + (v || 0), 0), 0);
+
           const updateLift = (field: string, val: number | boolean) =>
             update({ rentalEquipment: { ...rental, lift: { ...rental.lift, [field]: val } } });
           const addRentalItem = () =>
@@ -968,9 +982,9 @@ export function ProjectSidebar({
 
           return (
             <div key={type} className="pb-3">
-              {/* Input Values & BOM */}
+              {/* Upload BOM */}
               <PanelTrigger
-                label="Input Values & BOM"
+                label="Click here to Upload BOM"
                 summary={getTechInputSummary(tech)}
                 onClick={() => onOpenPanel(`input-values-${type}`)}
               />
@@ -994,6 +1008,48 @@ export function ProjectSidebar({
                 onChange={(v) => update({ waterAndIce: v })}
                 prefix="$"
               />
+
+              {/* RF Services */}
+              <FieldGroup title={`RF Services${rfTotal > 0 ? ` — ${formatCurrency(rfTotal)}` : ""}`} collapsible>
+                <div className="px-3 pb-2 flex flex-col gap-2">
+                  {rfItems.map((item, idx) => (
+                    <div key={item.id} className="flex flex-col gap-1">
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-muted-foreground/50 w-4 shrink-0">{idx + 1}</span>
+                        <Input
+                          value={item.description}
+                          onChange={(e) => updateRFItem(item.id, "description", e.target.value)}
+                          placeholder="Description"
+                          className="h-6 flex-1 bg-input/50 border-border/50 text-xs rounded-md min-w-0"
+                        />
+                        <button onClick={() => removeRFItem(item.id)} className="h-5 w-5 flex items-center justify-center text-muted-foreground/40 hover:text-destructive transition-colors shrink-0">
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                      {project.coloSites.map((colo) => (
+                        <div key={colo.id} className="flex items-center gap-1 pl-5">
+                          <span className="text-[10px] text-muted-foreground/50 flex-1 truncate">{colo.name}</span>
+                          <div className="flex items-stretch rounded-md border border-border/50 bg-input/50 overflow-hidden focus-within:border-primary/40 transition-colors shrink-0">
+                            <span className="flex items-center px-1.5 text-[11px] text-muted-foreground/50 bg-muted/20 border-r border-border/40">$</span>
+                            <Input
+                              type="number"
+                              step="any"
+                              value={item.values[colo.id] || ""}
+                              onChange={(e) => updateRFItem(item.id, "value", parseFloat(e.target.value) || 0, colo.id)}
+                              placeholder="-"
+                              className="h-6 w-20 border-0 shadow-none bg-transparent text-right text-xs font-mono tabular-nums focus-visible:ring-0 focus-visible:ring-offset-0"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                  <Button variant="ghost" size="sm" onClick={addRFItem}
+                    className="h-6 text-xs text-muted-foreground border border-dashed border-border/40 hover:border-primary/40 hover:text-primary w-full">
+                    <Plus className="h-3 w-3 mr-1" /> Add RF Item
+                  </Button>
+                </div>
+              </FieldGroup>
 
               {/* Additional Labor */}
               <FieldGroup title="Additional Labor" collapsible>
