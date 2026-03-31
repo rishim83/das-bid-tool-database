@@ -379,8 +379,42 @@ export function BomImportDialog({
     // Do not reset — keep analysis alive so Download Report stays available.
   };
 
+  const canDownload = !!analysis || (tech.bomReportRows?.length ?? 0) > 0;
+
+  const handleDownloadFromStored = () => {
+    const rows = tech.bomReportRows ?? [];
+    const header = [
+      "Part Number", "Manufacturer", "", "QTY", "", "",
+      "Material Unit Cost", "Labor Unit Hours", "RF Services ($)",
+      "Material Total Cost", "Labor Total Hours",
+    ];
+    const dataRows = rows.map((row) => [
+      row.code, row.manufacturer, "", row.qty, "", "",
+      row.unitEquipPrice, row.unitLaborHrs, "",
+      row.totalEquipPrice, row.totalLaborHrs,
+    ]);
+    const ws = XLSX.utils.aoa_to_sheet([header, ...dataRows]);
+    ws["!cols"] = [
+      { wch: 22 }, { wch: 28 }, { wch: 4 }, { wch: 6 }, { wch: 4 }, { wch: 4 },
+      { wch: 22 }, { wch: 22 }, { wch: 18 }, { wch: 20 }, { wch: 18 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "BOM Report");
+    const buffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([buffer], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `bom-report-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleDownload = () => {
-    if (!analysis) return;
+    if (!analysis) {
+      handleDownloadFromStored();
+      return;
+    }
 
     // Columns: A=Part#, B=Manufacturer, C=(empty), D=QTY,
     //          E=Material Unit Cost (w/ contingency), F=Labor Unit Hours (w/ contingency),
@@ -570,8 +604,8 @@ export function BomImportDialog({
         variant="outline"
         className="h-7 text-xs"
         onClick={handleDownload}
-        disabled={!analysis}
-        title={!analysis ? "Import a BOM first" : "Download BOM report"}
+        disabled={!canDownload}
+        title={!canDownload ? "Import a BOM first" : "Download BOM report"}
       >
         <Download className="h-3 w-3 mr-1" /> Download Report
       </Button>
