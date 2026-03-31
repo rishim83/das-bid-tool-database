@@ -96,7 +96,6 @@ export interface EquipmentCostBreakdown {
 
 export interface LaborHoursBreakdown {
   bom: number;
-  cores: number;
   badging: number;
   materialHandling: number;
   commissioningSupport: number;
@@ -220,7 +219,6 @@ export interface AdditionalMaterialItem {
 
 export interface ProjectSpecificDetails {
   jHooks: boolean;
-  cores: { enabled: boolean; count: number };
   badgingSafety: boolean;
   extras: ProjectExtras;
 }
@@ -239,7 +237,6 @@ export const DEFAULT_PROJECT_EXTRAS: ProjectExtras = {
 
 export const DEFAULT_PROJECT_SPECIFIC_DETAILS: ProjectSpecificDetails = {
   jHooks: false,
-  cores: { enabled: false, count: 0 },
   badgingSafety: false,
   extras: { ...DEFAULT_PROJECT_EXTRAS },
 };

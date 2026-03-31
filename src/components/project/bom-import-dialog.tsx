@@ -95,18 +95,6 @@ export function BomImportDialog({
     return map;
   }, [db]);
 
-  // PCC labor code hours (for Cores calculation)
-  const pccHoursPerUnit = useMemo(
-    () => db?.laborCodes.find((lc) => lc.code.toUpperCase() === "PCC")?.hoursPerUnit ?? 0,
-    [db]
-  );
-
-  // Additional hours from project-specific details (applied on top of BOM totals)
-  const coresAddedHours = useMemo(() => {
-    if (!projectSpecificDetails?.cores.enabled || pccHoursPerUnit === 0) return 0;
-    return projectSpecificDetails.cores.count * pccHoursPerUnit;
-  }, [projectSpecificDetails?.cores, pccHoursPerUnit]);
-
   // Badging: hardcoded 4 hrs per tech (no DB lookup)
   const badgingAddedHours = useMemo(() => {
     if (!projectSpecificDetails?.badgingSafety) return 0;
@@ -298,8 +286,8 @@ export function BomImportDialog({
   );
   const additionalLaborTotalHours = additionalLaborItemsData.reduce((s, i) => s + (i.hours || 0), 0);
 
-  // Base hours = BOM + cores + badging + MH + commissioning + additional labor
-  const baseHours = bomHours + coresAddedHours + badgingAddedHours + materialHandlingHours + commissioningHours + additionalLaborTotalHours;
+  // Base hours = BOM + badging + MH + commissioning + additional labor
+  const baseHours = bomHours + badgingAddedHours + materialHandlingHours + commissioningHours + additionalLaborTotalHours;
 
   // Extras computed from base hours (same formulas as before, but producing hours not dollars)
   const hpd = (hoursPerDay || 8);
@@ -345,7 +333,6 @@ export function BomImportDialog({
 
     const laborHoursBreakdown: LaborHoursBreakdown = {
       bom: bomHours,
-      cores: coresAddedHours,
       badging: badgingAddedHours,
       materialHandling: materialHandlingHours,
       commissioningSupport: commissioningHours,
@@ -372,7 +359,6 @@ export function BomImportDialog({
         return { code: item.partNumber, manufacturer: item.manufacturer || "", qty: item.quantity, unitEquipPrice: up, unitLaborHrs: ul, totalEquipPrice: up * item.quantity, totalLaborHrs: ul * item.quantity };
       }),
       ...unmatched.map((item) => ({ code: item.partNumber, manufacturer: item.manufacturer || "", qty: item.quantity, unitEquipPrice: excludeMaterials ? 0 : item.unitEquipmentPrice, unitLaborHrs: item.unitLaborHours, totalEquipPrice: excludeMaterials ? 0 : item.unitEquipmentPrice * item.quantity, totalLaborHrs: item.unitLaborHours * item.quantity })),
-      ...(coresAddedHours > 0 ? [{ code: "PCC", manufacturer: "", qty: projectSpecificDetails!.cores.count, unitEquipPrice: 0, unitLaborHrs: pccHoursPerUnit, totalEquipPrice: 0, totalLaborHrs: coresAddedHours }] : []),
       ...(badgingAddedHours > 0 ? [{ code: "BADGE", manufacturer: "", qty: numberOfGuys, unitEquipPrice: 0, unitLaborHrs: 4, totalEquipPrice: 0, totalLaborHrs: badgingAddedHours }] : []),
       ...(materialHandlingHours > 0 ? [{ code: "MH", manufacturer: "", qty: 1, unitEquipPrice: 0, unitLaborHrs: materialHandlingHours, totalEquipPrice: 0, totalLaborHrs: materialHandlingHours }] : []),
       ...(commissioningHours > 0 ? [{ code: "COMM", manufacturer: "", qty: 1, unitEquipPrice: 0, unitLaborHrs: commissioningHours, totalEquipPrice: 0, totalLaborHrs: commissioningHours }] : []),
@@ -473,22 +459,6 @@ export function BomImportDialog({
       }),
       // NC-only adder rows — excluded in NTI mode
       ...(!ntiMode ? [
-        // Cores addition
-        ...(coresAddedHours > 0
-          ? [[
-              "PCC",
-              `Cores (${projectSpecificDetails!.cores.count} cores × ${pccHoursPerUnit} hrs/core)`,
-              "",
-              projectSpecificDetails!.cores.count,
-              "",
-              "",
-              0,
-              pccHoursPerUnit * labMult,
-              "",
-              0,
-              coresAddedHours * labMult,
-            ]]
-          : []),
         // Badging/Safety
         ...(badgingAddedHours > 0
           ? [[
@@ -776,7 +746,6 @@ export function BomImportDialog({
                     <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Hours Breakdown</p>
                     {[
                       { label: "BOM (matched + unmatched)", hours: bomHours, always: true },
-                      { label: `+ Cores (${projectSpecificDetails?.cores?.count ?? 0} × ${pccHoursPerUnit} hrs)`, hours: coresAddedHours, always: false },
                       { label: `+ Badging / Safety (${guys} techs × 4 hrs)`, hours: badgingAddedHours, always: false },
                       { label: "+ Material Handling", hours: materialHandlingHours, always: false },
                       { label: "+ Commissioning Support", hours: commissioningHours, always: false },

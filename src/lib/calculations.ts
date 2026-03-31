@@ -194,8 +194,6 @@ export function computeEffectiveLaborHoursPerColo(
 
   if (totalBomHours === 0) return rawHoursPerColo;
 
-  // Cores hours need pccHoursPerUnit from DB — use value stored at last import
-  const coresHours = tech.laborHoursBreakdown?.cores ?? 0;
   // Badging: 4 hrs per tech (no DB lookup needed)
   const badgingHours = !!(psd?.badgingSafety) ? Math.max(numberOfGuys, 1) * 4 : 0;
   // Per-tech fixed extras (live from current tech state)
@@ -203,7 +201,7 @@ export function computeEffectiveLaborHoursPerColo(
   const commissioningHours = tech.commissioningSupport ?? 0;
   const additionalLaborHours = (tech.additionalLaborItems ?? []).reduce((s, i) => s + (i.hours || 0), 0);
 
-  const baseHours = totalBomHours + coresHours + badgingHours + materialHandlingHours + commissioningHours + additionalLaborHours;
+  const baseHours = totalBomHours + badgingHours + materialHandlingHours + commissioningHours + additionalLaborHours;
 
   // Percentage-based extras — recomputed from CURRENT settings
   const hpd = hoursPerDay || 8;

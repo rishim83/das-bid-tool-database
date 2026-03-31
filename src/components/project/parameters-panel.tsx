@@ -536,32 +536,6 @@ export function ParametersPanel({
         </div>
 
 
-        {/* Cores */}
-        <div className="flex items-center gap-2 px-3 py-2 border-t border-border/20">
-          <input
-            id="cores-cb"
-            type="checkbox"
-            checked={psd.cores.enabled}
-            onChange={(e) => updatePSD({ cores: { ...psd.cores, enabled: e.target.checked } })}
-            className="h-3.5 w-3.5 rounded border-border/50 accent-primary cursor-pointer"
-          />
-          <label htmlFor="cores-cb" className="text-sm text-muted-foreground cursor-pointer select-none w-16 shrink-0">
-            Cores
-          </label>
-          {psd.cores.enabled && (
-            <>
-              <Input
-                type="number"
-                step="1"
-                value={psd.cores.count}
-                onChange={(e) => updatePSD({ cores: { ...psd.cores, count: parseFloat(e.target.value) || 0 } })}
-                className="h-7 w-20 bg-input/40 border-border/50 text-right text-sm font-mono tabular-nums rounded-md"
-              />
-              <span className="text-xs text-muted-foreground shrink-0">cores</span>
-            </>
-          )}
-        </div>
-
         {/* Badging / Safety */}
         <div className="flex items-center gap-2.5 px-3 py-2 border-t border-border/20">
           <input

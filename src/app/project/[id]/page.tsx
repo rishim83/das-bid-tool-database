@@ -521,14 +521,12 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
       const expHpd  = ip.hoursPerDay > 0 ? ip.hoursPerDay : 8;
       const expDpw  = ip.daysPerWeek  > 0 ? ip.daysPerWeek  : 5;
       const expBomHrs  = Object.values(tech.installLaborHours).reduce((s, h) => s + (h || 0), 0);
-      const expBd      = tech.laborHoursBreakdown;
-      const expCores   = expBd?.cores ?? 0;
       const expBadging = !!(expPsd?.badgingSafety) ? expGuys * 4 : 0;
       const expMH      = tech.materialHandlingHours ?? 0;
       const expComm    = tech.commissioningSupport  ?? 0;
       const expAddlLabor = (tech.additionalLaborItems ?? []).filter((i) => (i.hours || 0) > 0);
       const expAddlHrs   = expAddlLabor.reduce((s, i) => s + (i.hours || 0), 0);
-      const expBase      = expBomHrs + expCores + expBadging + expMH + expComm + expAddlHrs;
+      const expBase      = expBomHrs + expBadging + expMH + expComm + expAddlHrs;
       const expBaseDays  = expBase > 0 ? expBase / expHpd : 0;
       const expBaseWeeks = expBaseDays > 0 ? expBaseDays / expDpw : 0;
       const expShuttle   = !!(expPsd?.extras?.shuttleServices) && expBase > 0 ? expBaseDays : 0;
@@ -543,7 +541,6 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
 
       const laborItems: [string, number][] = [];
       if (expBomHrs > 0)  laborItems.push(["BOM Labor Hours (from database)", expBomHrs]);
-      if (expCores > 0)   laborItems.push(["Cores", expCores]);
       if (expBadging > 0) laborItems.push(["Badging / Safety", expBadging]);
       if (expMH > 0)      laborItems.push(["Material Handling", expMH]);
       if (expComm > 0)    laborItems.push(["Commissioning Support", expComm]);

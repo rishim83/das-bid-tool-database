@@ -48,14 +48,12 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
 
     // Build dynamic breakdown from current settings (same logic as computeEffectiveLaborHoursPerColo)
     const rawBomHours = Object.values(tech.installLaborHours).reduce((s, h) => s + (h || 0), 0);
-    const bd = tech.laborHoursBreakdown;
-    const coresHours = bd?.cores ?? 0;
     const badgingHours = !!(psd?.badgingSafety) ? guys * 4 : 0;
     const materialHandlingHours = tech.materialHandlingHours ?? 0;
     const commissioningHours = tech.commissioningSupport ?? 0;
     const additionalLaborItems = (tech.additionalLaborItems ?? []).filter((i) => (i.hours || 0) > 0);
     const additionalLaborHours = additionalLaborItems.reduce((s, i) => s + (i.hours || 0), 0);
-    const baseHours = rawBomHours + coresHours + badgingHours + materialHandlingHours + commissioningHours + additionalLaborHours;
+    const baseHours = rawBomHours + badgingHours + materialHandlingHours + commissioningHours + additionalLaborHours;
     const baseDays = baseHours > 0 ? baseHours / hpd : 0;
     const shuttleHours   = !!(psd?.extras?.shuttleServices) && baseHours > 0 ? baseDays : 0;
     const stretchHours   = !!(psd?.extras?.stretchAndFlex)  && baseHours > 0 ? baseDays * 0.5 : 0;
@@ -64,7 +62,6 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
 
     const dynBreakdown = {
       bom: rawBomHours,
-      cores: coresHours,
       badging: badgingHours,
       materialHandling: materialHandlingHours,
       commissioningSupport: commissioningHours,
@@ -100,7 +97,6 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
 
   const breakdownRows: BreakdownRow[] = [
     { kind: "row", label: "Import BOM", getValue: (s) => s.dynBreakdown?.bom ?? 0 },
-    { kind: "row", label: "+ Cores", getValue: (s) => s.dynBreakdown?.cores ?? 0 },
     { kind: "row", label: "+ Badging / Safety", getValue: (s) => s.dynBreakdown?.badging ?? 0 },
     { kind: "row", label: "+ Material Handling", getValue: (s) => s.dynBreakdown?.materialHandling ?? 0 },
     { kind: "row", label: "+ Commissioning Support", getValue: (s) => s.dynBreakdown?.commissioningSupport ?? 0 },

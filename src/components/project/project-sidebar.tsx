@@ -691,7 +691,7 @@ export function ProjectSidebar({
         <SidebarSection
           title="Project Details"
           icon={<Clipboard className="h-3.5 w-3.5" />}
-          summary={[psd.jHooks && "J Hooks", psd.badgingSafety && "Badging", psd.cores.enabled && "Cores"].filter(Boolean).join(" · ") || "None"}
+          summary={[psd.jHooks && "J Hooks", psd.badgingSafety && "Badging"].filter(Boolean).join(" · ") || "None"}
         >
           <CheckboxField
             label="J Hooks for Pathway"
@@ -708,24 +708,6 @@ export function ProjectSidebar({
             checked={!!psd.extras?.excludeMaterials}
             onChange={(v) => onUpdateProjectSpecificDetails({ ...psd, extras: { ...psd.extras, excludeMaterials: v } })}
           />
-          <div className="flex items-center gap-2 px-3 py-1.5">
-            <input
-              type="checkbox"
-              checked={psd.cores.enabled}
-              onChange={(e) => onUpdateProjectSpecificDetails({ ...psd, cores: { ...psd.cores, enabled: e.target.checked } })}
-              className="h-3.5 w-3.5 rounded border-border/50 accent-primary cursor-pointer shrink-0"
-            />
-            <span className="text-xs text-foreground/80 flex-1">Cores</span>
-            {psd.cores.enabled && (
-              <Input
-                type="number"
-                step="1"
-                value={psd.cores.count}
-                onChange={(e) => onUpdateProjectSpecificDetails({ ...psd, cores: { ...psd.cores, count: parseFloat(e.target.value) || 0 } })}
-                className="h-7 w-16 bg-input/40 border-border/50 text-right text-xs font-mono tabular-nums rounded-md"
-              />
-            )}
-          </div>
         </SidebarSection>
       )}
 
