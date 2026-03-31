@@ -704,17 +704,12 @@ export function ProjectSidebar({
         <SidebarSection
           title="Project Details"
           icon={<Clipboard className="h-3.5 w-3.5" />}
-          summary={[psd.jHooks && "J Hooks", psd.badgingSafety && "Badging"].filter(Boolean).join(" · ") || "None"}
+          summary={[psd.jHooks && "J Hooks"].filter(Boolean).join(" · ") || "None"}
         >
           <CheckboxField
             label="J Hooks for Pathway"
             checked={psd.jHooks}
             onChange={(v) => onUpdateProjectSpecificDetails({ ...psd, jHooks: v })}
-          />
-          <CheckboxField
-            label="Badging / Safety"
-            checked={psd.badgingSafety}
-            onChange={(v) => onUpdateProjectSpecificDetails({ ...psd, badgingSafety: v })}
           />
           <CheckboxField
             label="Exclude Materials"
@@ -730,11 +725,18 @@ export function ProjectSidebar({
           title="Extras"
           icon={<Wrench className="h-3.5 w-3.5" />}
           summary={[
+            psd.badgingSafety && "Badging",
             psd.extras?.shuttleServices && "Shuttle",
             psd.extras?.stretchAndFlex && "Stretch",
             psd.extras?.liftSpotters && "Lift",
           ].filter(Boolean).join(" · ") || "None"}
         >
+          <CheckboxField
+            label="Badging / Safety"
+            checked={psd.badgingSafety}
+            onChange={(v) => onUpdateProjectSpecificDetails({ ...psd, badgingSafety: v })}
+            tooltip="Adds 4 hrs per tech (# of Guys × 4 hrs)"
+          />
           <CheckboxField
             label="Shuttle Services"
             checked={!!psd.extras?.shuttleServices}
