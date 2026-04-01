@@ -129,18 +129,18 @@ function PanelTrigger({
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center justify-between px-3 py-2 transition-colors group ${
+      className={`w-full flex items-center justify-between px-3 py-1.5 transition-colors group ${
         accent
           ? "bg-primary/5 hover:bg-primary/10 border-y border-primary/10"
-          : "hover:bg-sidebar-accent/70"
+          : "hover:bg-sidebar-accent/40"
       }`}
     >
-      <span className={`text-xs font-medium ${accent ? "text-primary/80 group-hover:text-primary" : "text-foreground/80"}`}>{label}</span>
+      <span className={accent ? "text-xs font-medium text-primary/80 group-hover:text-primary" : "text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground/40"}>{label}</span>
       <div className="flex items-center gap-1.5">
         {summary && (
-          <span className="text-[11px] font-mono tabular-nums text-muted-foreground/60">{summary}</span>
+          <span className="text-[10px] font-mono tabular-nums text-muted-foreground/40">{summary}</span>
         )}
-        <ChevronRight className={`h-3 w-3 transition-colors ${accent ? "text-primary/40 group-hover:text-primary/70" : "text-muted-foreground/30 group-hover:text-muted-foreground/60"}`} />
+        <ChevronRight className={`h-3 w-3 transition-colors ${accent ? "text-primary/40 group-hover:text-primary/70" : "text-muted-foreground/30 group-hover:text-muted-foreground/50"}`} />
       </div>
     </button>
   );
