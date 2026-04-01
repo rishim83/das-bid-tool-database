@@ -46,6 +46,7 @@ import {
   SlidersHorizontal,
   Plus,
   Trash2,
+  CopyCheck,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ParametersPanel } from "./parameters-panel";
@@ -59,7 +60,8 @@ export type SidebarPanelId =
   | "colos"
   | "parameters"
   | `input-values-${TechnologyType}`
-  | `tech-details-${TechnologyType}`;
+  | `tech-details-${TechnologyType}`
+  | `rf-services-${TechnologyType}`;
 
 // ─── Sidebar section (collapsible) ──────────────────────────────
 
@@ -1010,46 +1012,11 @@ export function ProjectSidebar({
               />
 
               {/* RF Services */}
-              <FieldGroup title={`RF Services${rfTotal > 0 ? ` — ${formatCurrency(rfTotal)}` : ""}`} collapsible>
-                <div className="px-3 pb-2 flex flex-col gap-2">
-                  {rfItems.map((item, idx) => (
-                    <div key={item.id} className="flex flex-col gap-1">
-                      <div className="flex items-center gap-1">
-                        <span className="text-[10px] text-muted-foreground/50 w-4 shrink-0">{idx + 1}</span>
-                        <Input
-                          value={item.description}
-                          onChange={(e) => updateRFItem(item.id, "description", e.target.value)}
-                          placeholder="Description"
-                          className="h-6 flex-1 bg-input/50 border-border/50 text-xs rounded-md min-w-0"
-                        />
-                        <button onClick={() => removeRFItem(item.id)} className="h-5 w-5 flex items-center justify-center text-muted-foreground/40 hover:text-destructive transition-colors shrink-0">
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      </div>
-                      {project.coloSites.map((colo) => (
-                        <div key={colo.id} className="flex items-center gap-1 pl-5">
-                          <span className="text-[10px] text-muted-foreground/50 flex-1 truncate">{colo.name}</span>
-                          <div className="flex items-stretch rounded-md border border-border/50 bg-input/50 overflow-hidden focus-within:border-primary/40 transition-colors shrink-0">
-                            <span className="flex items-center px-1.5 text-[11px] text-muted-foreground/50 bg-muted/20 border-r border-border/40">$</span>
-                            <Input
-                              type="number"
-                              step="any"
-                              value={item.values[colo.id] || ""}
-                              onChange={(e) => updateRFItem(item.id, "value", parseFloat(e.target.value) || 0, colo.id)}
-                              placeholder="-"
-                              className="h-6 w-20 border-0 shadow-none bg-transparent text-right text-xs font-mono tabular-nums focus-visible:ring-0 focus-visible:ring-offset-0"
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                  <Button variant="ghost" size="sm" onClick={addRFItem}
-                    className="h-6 text-xs text-muted-foreground border border-dashed border-border/40 hover:border-primary/40 hover:text-primary w-full">
-                    <Plus className="h-3 w-3 mr-1" /> Add RF Item
-                  </Button>
-                </div>
-              </FieldGroup>
+              <PanelTrigger
+                label="RF Services"
+                summary={rfTotal > 0 ? formatCurrency(rfTotal) : `${rfItems.length} items`}
+                onClick={() => onOpenPanel(`rf-services-${type}`)}
+              />
 
               {/* Additional Labor */}
               <FieldGroup title="Additional Labor" collapsible>
@@ -1267,6 +1234,7 @@ export function SidebarOverlayPanel({
   if (techType) {
     panelTitles[`input-values-${techType}`] = `${TECHNOLOGY_LABELS[techType]} — Input Values`;
     panelTitles[`tech-details-${techType}`] = `${TECHNOLOGY_LABELS[techType]} — Details`;
+    panelTitles[`rf-services-${techType}`] = `${TECHNOLOGY_LABELS[techType]} — RF Services`;
   }
 
   const title = panelTitles[panelId] ?? "Settings";
@@ -1322,6 +1290,99 @@ export function SidebarOverlayPanel({
               onProjectSpecificDetailsChange={onUpdateProjectSpecificDetails}
             />
           )}
+
+          {panelId.startsWith("rf-services-") && tech && (() => {
+            const rfItems = tech.rfLineItems ?? [];
+            const updateTech = (patch: Partial<TechnologyConfig>) => onUpdateTechnology({ ...tech, ...patch });
+            const addRF = () => updateTech({ rfLineItems: [...rfItems, { id: uuid(), description: "New Item", values: {} }] });
+            const removeRF = (id: string) => updateTech({ rfLineItems: rfItems.filter((i) => i.id !== id) });
+            const updateRFDesc = (id: string, desc: string) =>
+              updateTech({ rfLineItems: rfItems.map((i) => i.id === id ? { ...i, description: desc } : i) });
+            const updateRFVal = (id: string, coloId: string, val: number) =>
+              updateTech({ rfLineItems: rfItems.map((i) => i.id === id ? { ...i, values: { ...i.values, [coloId]: val } } : i) });
+            const copyToAll = (id: string) => {
+              const item = rfItems.find((i) => i.id === id);
+              const firstColo = project.coloSites[0];
+              if (!item || !firstColo) return;
+              const srcVal = item.values[firstColo.id] || 0;
+              const newVals: Record<string, number> = {};
+              project.coloSites.forEach((c) => { newVals[c.id] = srcVal; });
+              updateTech({ rfLineItems: rfItems.map((i) => i.id === id ? { ...i, values: newVals } : i) });
+            };
+
+            return (
+              <div className="space-y-3">
+                <div className="border border-border/60 rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border/50 bg-muted/20">
+                        <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground w-8">#</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">Description</th>
+                        {project.coloSites.map((c) => (
+                          <th key={c.id} className="px-2 py-2 text-center text-xs font-medium text-muted-foreground min-w-[120px]">{c.name}</th>
+                        ))}
+                        <th className="px-2 py-2 w-16" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rfItems.map((item, idx) => (
+                        <tr key={item.id} className="border-t border-border/25 group hover:bg-accent/30 transition-colors">
+                          <td className="px-3 py-1.5 text-xs text-muted-foreground/60">{idx + 1}</td>
+                          <td className="px-3 py-1.5">
+                            <Input
+                              value={item.description}
+                              onChange={(e) => updateRFDesc(item.id, e.target.value)}
+                              className="h-7 text-xs border-transparent hover:border-border/50 bg-transparent"
+                            />
+                          </td>
+                          {project.coloSites.map((c) => (
+                            <td key={c.id} className="px-2 py-1.5 text-center">
+                              <Input
+                                type="number" step="any"
+                                value={item.values[c.id] || ""}
+                                onChange={(e) => updateRFVal(item.id, c.id, parseFloat(e.target.value) || 0)}
+                                placeholder="-"
+                                className="h-7 w-28 bg-input/30 border-border/40 text-right text-xs font-mono tabular-nums rounded-md"
+                              />
+                            </td>
+                          ))}
+                          <td className="px-1 py-1.5">
+                            <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity gap-0.5">
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground/50 hover:text-foreground" onClick={() => copyToAll(item.id)} title={`Copy ${project.coloSites[0]?.name || "first"} to all`}>
+                                <CopyCheck className="h-3 w-3" />
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground/50 hover:text-destructive" onClick={() => removeRF(item.id)}>
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {rfItems.length > 0 && (
+                        <tr className="border-t border-border/40 bg-muted/10">
+                          <td className="px-3 py-1.5" />
+                          <td className="px-3 py-1.5 text-xs font-medium text-muted-foreground text-right">Total</td>
+                          {project.coloSites.map((c) => (
+                            <td key={c.id} className="px-2 py-1.5 text-center text-xs font-mono tabular-nums font-medium">
+                              {formatCurrency(rfItems.reduce((s, i) => s + (i.values[c.id] || 0), 0))}
+                            </td>
+                          ))}
+                          <td />
+                        </tr>
+                      )}
+                      <tr className="border-t border-border/30">
+                        <td colSpan={project.coloSites.length + 3} className="px-3 py-1.5">
+                          <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground/60 hover:text-primary" onClick={addRF}>
+                            <Plus className="h-3 w-3 mr-1" /> Add Line Item
+                          </Button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
 
           {panelId.startsWith("input-values-") && tech && (
             <div className="space-y-4">

@@ -16,10 +16,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Trash2, CopyCheck, ChevronDown } from "lucide-react";
-import { v4 as uuid } from "uuid";
+import { CopyCheck, ChevronDown } from "lucide-react";
 import { TECHNOLOGY_LABELS, TECHNOLOGY_DOT } from "@/lib/constants";
-import { formatCurrency } from "@/lib/calculations";
 
 interface Props {
   tech: TechnologyConfig;
@@ -75,22 +73,6 @@ export function InputValuesTable({ tech, coloSites, onChange, ntiMode = false }:
   const label = TECHNOLOGY_LABELS[tech.type];
   const dotColor = TECHNOLOGY_DOT[tech.type];
 
-  const copyRFToAll = (itemId: string) => {
-    const item = tech.rfLineItems.find((i) => i.id === itemId);
-    if (!item) return;
-    const firstColo = coloSites[0];
-    if (!firstColo) return;
-    const sourceValue = item.values[firstColo.id] || 0;
-    const newValues: Record<string, number> = {};
-    coloSites.forEach((c) => { newValues[c.id] = sourceValue; });
-    onChange({
-      ...tech,
-      rfLineItems: tech.rfLineItems.map((i) =>
-        i.id === itemId ? { ...i, values: newValues } : i
-      ),
-    });
-  };
-
   const copyFieldToAll = (field: "installLaborHours" | "equipmentCost" | "pmTrips") => {
     const firstColo = coloSites[0];
     if (!firstColo) return;
@@ -101,50 +83,16 @@ export function InputValuesTable({ tech, coloSites, onChange, ntiMode = false }:
   };
 
   const copyEntireColoFrom = (sourceColoId: string, targetColoId: string) => {
-    const updatedRF = tech.rfLineItems.map((item) => ({
-      ...item,
-      values: { ...item.values, [targetColoId]: item.values[sourceColoId] || 0 },
-    }));
     onChange({
       ...tech,
-      rfLineItems: updatedRF,
       installLaborHours: { ...tech.installLaborHours, [targetColoId]: tech.installLaborHours[sourceColoId] || 0 },
       equipmentCost: { ...tech.equipmentCost, [targetColoId]: tech.equipmentCost[sourceColoId] || 0 },
       pmTrips: { ...tech.pmTrips, [targetColoId]: tech.pmTrips[sourceColoId] || 0 },
     });
   };
 
-  const updateRFValue = (itemId: string, coloId: string, value: number) => {
-    onChange({
-      ...tech,
-      rfLineItems: tech.rfLineItems.map((item) =>
-        item.id === itemId ? { ...item, values: { ...item.values, [coloId]: value } } : item
-      ),
-    });
-  };
-
   const updateField = (field: "installLaborHours" | "equipmentCost" | "pmTrips", coloId: string, value: number) => {
     onChange({ ...tech, [field]: { ...tech[field], [coloId]: value } });
-  };
-
-  const addRFLineItem = () => {
-    onChange({
-      ...tech,
-      rfLineItems: [...tech.rfLineItems, { id: uuid(), description: "New Item", values: {} }],
-    });
-  };
-
-  const removeRFLineItem = (itemId: string) => {
-    onChange({ ...tech, rfLineItems: tech.rfLineItems.filter((item) => item.id !== itemId) });
-  };
-
-  const updateRFDescription = (itemId: string, description: string) => {
-    onChange({
-      ...tech,
-      rfLineItems: tech.rfLineItems.map((item) =>
-        item.id === itemId ? { ...item, description } : item
-      ),
-    });
   };
 
   return (
@@ -188,57 +136,6 @@ export function InputValuesTable({ tech, coloSites, onChange, ntiMode = false }:
             </tr>
           </thead>
           <tbody>
-            {/* RF Engineering */}
-            <tr>
-              <td colSpan={coloSites.length + 3} className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50 bg-secondary/40 border-y border-border/20">
-                RF Engineering Services
-              </td>
-            </tr>
-            {tech.rfLineItems.map((item, idx) => (
-              <tr key={item.id} className="border-t border-border/25 group hover:bg-accent/30 transition-colors">
-                <td className="px-3 py-1 text-xs text-muted-foreground/60 tabular-nums">{idx + 1}</td>
-                <td className="px-3 py-1">
-                  <Input
-                    value={item.description}
-                    onChange={(e) => updateRFDescription(item.id, e.target.value)}
-                    className="h-7 text-xs border-transparent hover:border-border/50 bg-transparent"
-                  />
-                </td>
-                {coloSites.map((colo) => (
-                  <td key={colo.id} className="px-2 py-1 text-center">
-                    <ValueInput value={item.values[colo.id] || 0} onChange={(val) => updateRFValue(item.id, colo.id, val)} />
-                  </td>
-                ))}
-                <td className="px-1 py-1">
-                  <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <CopyBtn onClick={() => copyRFToAll(item.id)} label={`Copy ${coloSites[0]?.name || "first"} to all`} />
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground/50 hover:text-destructive" onClick={() => removeRFLineItem(item.id)}>
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {tech.rfLineItems.length > 0 && (
-              <tr className="border-t border-border/40 bg-secondary/20">
-                <td className="px-3 py-1.5"></td>
-                <td className="px-3 py-1.5 text-xs font-medium text-muted-foreground text-right pr-4">Total</td>
-                {coloSites.map((colo) => (
-                  <td key={colo.id} className="px-2 py-1.5 text-center text-xs font-mono tabular-nums font-medium">
-                    {formatCurrency(tech.rfLineItems.reduce((s, item) => s + (item.values[colo.id] || 0), 0))}
-                  </td>
-                ))}
-                <td className="px-1 py-1.5"></td>
-              </tr>
-            )}
-            <tr className="border-t border-border/40">
-              <td colSpan={coloSites.length + 3} className="px-3 py-1">
-                <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground/50 hover:text-primary transition-colors" onClick={addRFLineItem}>
-                  <Plus className="h-3 w-3 mr-1" /> Add Line Item
-                </Button>
-              </td>
-            </tr>
-
             {/* Install */}
             <tr>
               <td colSpan={coloSites.length + 3} className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50 bg-secondary/40 border-y border-border/20">
