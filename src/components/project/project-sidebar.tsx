@@ -135,12 +135,12 @@ function PanelTrigger({
           : "hover:bg-sidebar-accent/40"
       }`}
     >
-      <span className={accent ? "text-xs font-medium text-primary/80 group-hover:text-primary" : "text-[10px] font-extrabold uppercase tracking-widest text-foreground/55"}>{label}</span>
+      <span className={accent ? "text-xs font-medium text-primary/80 group-hover:text-primary" : "text-[10px] font-extrabold uppercase tracking-widest text-white/60"}>{label}</span>
       <div className="flex items-center gap-1.5">
         {summary && (
-          <span className="text-[10px] font-mono tabular-nums text-foreground/50">{summary}</span>
+          <span className="text-[10px] font-mono tabular-nums text-white/50">{summary}</span>
         )}
-        <ChevronRight className={`h-3 w-3 transition-colors ${accent ? "text-primary/40 group-hover:text-primary/70" : "text-foreground/35 group-hover:text-foreground/60"}`} />
+        <ChevronRight className={`h-3 w-3 transition-colors ${accent ? "text-primary/40 group-hover:text-primary/70" : "text-white/35 group-hover:text-white/60"}`} />
       </div>
     </button>
   );
@@ -173,19 +173,19 @@ function InlineField({
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="text-[10.5px] text-foreground/80 shrink-0 cursor-help border-b border-dashed border-foreground/30">{label}</span>
+              <span className="text-[10.5px] text-white/90 shrink-0 cursor-help border-b border-dashed border-white/30">{label}</span>
             </TooltipTrigger>
             <TooltipContent side="right" className="max-w-[220px] text-xs">{tooltip}</TooltipContent>
           </Tooltip>
         </TooltipProvider>
       ) : (
-        <span className="text-[10.5px] text-foreground/80 shrink-0">{label}</span>
+        <span className="text-[10.5px] text-white/90 shrink-0">{label}</span>
       )}
       <div className="flex items-center gap-1.5 shrink-0">
-      {total && <span className="text-[10px] font-mono tabular-nums text-foreground/50">{total}</span>}
+      {total && <span className="text-[10px] font-mono tabular-nums text-white/50">{total}</span>}
       <div className="flex items-stretch rounded-md border border-border/50 bg-input/50 overflow-hidden focus-within:border-primary/40 transition-colors">
         {prefix && (
-          <span className="flex items-center px-2 text-[11px] text-foreground/50 bg-muted/20 border-r border-border/40 shrink-0">
+          <span className="flex items-center px-2 text-[11px] text-white/50 bg-muted/20 border-r border-border/40 shrink-0">
             {prefix}
           </span>
         )}
@@ -197,7 +197,7 @@ function InlineField({
           className="h-7 w-20 border-0 shadow-none bg-transparent text-right text-xs font-mono tabular-nums focus-visible:ring-0 focus-visible:ring-offset-0"
         />
         {suffix && (
-          <span className="flex items-center px-2 text-[11px] text-foreground/50 bg-muted/20 border-l border-border/40 shrink-0">
+          <span className="flex items-center px-2 text-[11px] text-white/50 bg-muted/20 border-l border-border/40 shrink-0">
             {suffix}
           </span>
         )}
@@ -232,13 +232,13 @@ function CheckboxField({
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="text-xs text-foreground cursor-help border-b border-dashed border-foreground/30">{label}</span>
+              <span className="text-xs text-white cursor-help border-b border-dashed border-white/30">{label}</span>
             </TooltipTrigger>
             <TooltipContent side="right" className="max-w-[220px] text-xs">{tooltip}</TooltipContent>
           </Tooltip>
         </TooltipProvider>
       ) : (
-        <span className="text-xs text-foreground">{label}</span>
+        <span className="text-xs text-white">{label}</span>
       )}
     </label>
   );
@@ -249,7 +249,7 @@ function CheckboxField({
 function DisplayRow({ label, value, tooltip }: { label: string; value: string; tooltip?: string }) {
   const inner = (
     <div className={`flex items-center justify-between px-3 py-1.5 bg-muted/20 ${tooltip ? "cursor-help" : ""}`}>
-      <span className={`text-xs text-foreground/80 ${tooltip ? "underline decoration-dotted underline-offset-2" : ""}`}>
+      <span className={`text-xs text-white/90 ${tooltip ? "underline decoration-dotted underline-offset-2" : ""}`}>
         {label}
       </span>
       <span className="text-xs font-mono font-semibold tabular-nums">{value}</span>
@@ -280,7 +280,7 @@ function FieldGroup({
   defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
-  const labelClass = "text-[10px] font-extrabold uppercase tracking-widest text-foreground/55";
+  const labelClass = "text-[10px] font-extrabold uppercase tracking-widest text-white/60";
 
   if (collapsible) {
     return (
@@ -301,7 +301,7 @@ function FieldGroup({
 
   return (
     <div className="mt-2">
-      <div className="mx-3 mb-1 pb-1 text-[10px] font-extrabold uppercase tracking-widest text-foreground/55 border-b border-border/25">
+      <div className="mx-3 mb-1 pb-1 text-[10px] font-extrabold uppercase tracking-widest text-white/60 border-b border-border/25">
         {title}
       </div>
       {children}
