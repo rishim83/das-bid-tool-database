@@ -992,6 +992,15 @@ export function ProjectSidebar({
               />
 
               {/* Inline fields */}
+              {!isNTI && project.coloSites.map((colo) => (
+                <InlineField
+                  key={colo.id}
+                  label={project.coloSites.length > 1 ? `PM Trips (${colo.name})` : "PM Trips"}
+                  value={tech.pmTrips[colo.id] ?? 0}
+                  onChange={(v) => update({ pmTrips: { ...tech.pmTrips, [colo.id]: v } })}
+                  step="1"
+                />
+              ))}
               <InlineField
                 label="Material Handling"
                 value={tech.materialHandlingHours ?? 0}
