@@ -35,6 +35,7 @@ import {
   ArrowRight,
   BarChart3,
   Database,
+  Search,
 } from "lucide-react";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -52,6 +53,7 @@ export default function HomePage() {
   const [templateDesc, setTemplateDesc] = useState("");
 
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     Promise.all([loadProjects(), loadTemplates()]).then(([projs, tmpls]) => {
@@ -272,9 +274,24 @@ export default function HomePage() {
             </Button>
           </div>
         ) : (
+          <>
+            <div className="relative mb-3">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50 pointer-events-none" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search projects…"
+                className="h-8 pl-8 text-xs bg-card border-border/50"
+              />
+            </div>
           <div className="space-y-px border border-border/60 rounded-lg overflow-hidden card-elevated bg-card">
             {projects
               .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+              .filter((p) => {
+                const q = search.trim().toLowerCase();
+                if (!q) return true;
+                return p.name.toLowerCase().includes(q) || (p.client ?? "").toLowerCase().includes(q);
+              })
               .map((p, i) => (
                 <div
                   key={p.id}
@@ -310,7 +327,17 @@ export default function HomePage() {
                   </div>
                 </div>
               ))}
+            {projects.filter((p) => {
+              const q = search.trim().toLowerCase();
+              if (!q) return false;
+              return !p.name.toLowerCase().includes(q) && !(p.client ?? "").toLowerCase().includes(q);
+            }).length === projects.length && search.trim() && (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                No projects match &ldquo;{search}&rdquo;
+              </div>
+            )}
           </div>
+          </>
         )}
       </div>
     </div>
