@@ -217,15 +217,15 @@ export function QuoteTable({
                       total: rawBase,
                     });
                     if (materialSafety !== 1) {
-                      const safetyAdder = rawBase * (materialSafety - 1) * equipMarkUp;
+                      const safetyAdder = rawBase * (materialSafety - 1);
                       subRows.push({
                         label: `Material Contingency (×${materialSafety.toFixed(2)})`,
-                        formula: `Base × (Material Contingency − 1) × Mark Up`,
+                        formula: `Base × (Material Contingency − 1)`,
                         getValue: (coloId) => {
                           const base = materialSafety * equipMarkUp !== 0
                             ? (line.values[coloId] || 0) / materialSafety / equipMarkUp
                             : line.values[coloId] || 0;
-                          return base * (materialSafety - 1) * equipMarkUp;
+                          return base * (materialSafety - 1);
                         },
                         total: safetyAdder,
                       });
