@@ -315,33 +315,29 @@ export default function HomePage() {
               return (
                 <div className="border border-border/60 rounded-lg overflow-hidden card-elevated bg-card">
                   {/* Column headers */}
-                  <div className="grid grid-cols-[1fr_160px_80px_100px_auto] gap-2 px-4 py-1.5 border-b border-border/40 bg-muted/30">
+                  <div className="grid grid-cols-[1fr_200px_100px_auto] gap-2 px-4 py-1.5 border-b border-border/40 bg-muted/30">
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">Project</span>
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">Client</span>
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50 text-center">Tech / COLOs</span>
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50 text-right">Updated</span>
                     <span className="w-24" />
                   </div>
                   {filtered.map((p, i) => (
                     <div
                       key={p.id}
-                      className={`group grid grid-cols-[1fr_160px_80px_100px_auto] gap-2 items-center px-4 py-2 cursor-pointer hover:bg-accent/40 transition-colors ${i > 0 ? "border-t border-border/30" : ""}`}
+                      className={`group grid grid-cols-[1fr_200px_100px_auto] gap-2 items-start px-4 py-2 cursor-pointer hover:bg-accent/40 transition-colors ${i > 0 ? "border-t border-border/30" : ""}`}
                       onClick={() => router.push(`/project/${p.id}`)}
                     >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-sm font-medium truncate">{p.name}</span>
+                      <div className="flex items-start gap-2 min-w-0">
+                        <span className="text-sm font-medium leading-snug break-words">{p.name}</span>
                         {p.status === "completed" && (
-                          <Badge variant="secondary" className="text-[10px] h-4 px-1.5 shrink-0">done</Badge>
+                          <Badge variant="secondary" className="text-[10px] h-4 px-1.5 shrink-0 mt-0.5">done</Badge>
                         )}
                       </div>
-                      <span className="text-xs text-muted-foreground truncate">{p.client || "—"}</span>
-                      <span className="text-xs text-muted-foreground text-center tabular-nums">
-                        {p.technologies.filter((t) => t.enabled).length}T / {p.coloSites.length}C
-                      </span>
-                      <span className="text-xs text-muted-foreground text-right tabular-nums">
+                      <span className="text-xs text-muted-foreground truncate pt-0.5">{p.client || "—"}</span>
+                      <span className="text-xs text-muted-foreground text-right tabular-nums pt-0.5">
                         {new Date(p.updatedAt).toLocaleDateString()}
                       </span>
-                      <div className="flex items-center gap-0.5 w-24 justify-end shrink-0">
+                      <div className="flex items-start gap-0.5 w-24 justify-end shrink-0 pt-0.5">
                         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-amber-500" onClick={(e) => handleArchive(p, e)} title="Archive">
                             <Archive className="h-3 w-3" />
