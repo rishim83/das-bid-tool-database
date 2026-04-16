@@ -81,7 +81,7 @@ export function NTIReportPreview({ tech, coloSites, materialContingency, laborCo
   const handleCopy = () => {
     const headers = [
       "Part Number", "Manufacturer", "", "QTY", "", "",
-      matLabel, labLabel, "RF Services ($)", "Material Total Cost", "Labor Total Hours",
+      matLabel, labLabel, "RF Services ($)",
     ];
     const dataRows = allRows.map((r) => [
       r.code,
@@ -93,15 +93,11 @@ export function NTIReportPreview({ tech, coloSites, materialContingency, laborCo
       r.unitEquipPrice > 0 ? r.unitEquipPrice.toFixed(2) : "",
       r.unitLaborHrs > 0  ? r.unitLaborHrs.toFixed(4)   : "",
       r.rfServices > 0    ? r.rfServices.toFixed(2)      : "",
-      r.matTotal > 0      ? r.matTotal.toFixed(2)        : "",
-      r.laborTotal > 0    ? r.laborTotal.toFixed(4)      : "",
     ]);
     const totalRow = [
       "", "TOTAL", "", "", "", "",
       "", "",
       totalRF  > 0 ? totalRF.toFixed(2)  : "",
-      totalMat > 0 ? totalMat.toFixed(2) : "",
-      totalLab > 0 ? totalLab.toFixed(4) : "",
     ];
     const tsv = [...dataRows, totalRow]
       .map((row) => row.join("\t"))
@@ -147,8 +143,6 @@ export function NTIReportPreview({ tech, coloSites, materialContingency, laborCo
               <th className="px-3 py-2 text-right font-medium text-muted-foreground whitespace-nowrap">{matLabel}</th>
               <th className="px-3 py-2 text-right font-medium text-muted-foreground whitespace-nowrap">{labLabel}</th>
               <th className="px-3 py-2 text-right font-medium text-muted-foreground whitespace-nowrap">RF Services ($)</th>
-              <th className="px-3 py-2 text-right font-medium text-muted-foreground whitespace-nowrap">Material Total</th>
-              <th className="px-3 py-2 text-right font-medium text-muted-foreground whitespace-nowrap">Labor Total Hrs</th>
             </tr>
           </thead>
           <tbody>
@@ -171,12 +165,6 @@ export function NTIReportPreview({ tech, coloSites, materialContingency, laborCo
                 <td className="px-3 py-1.5 text-right tabular-nums font-mono">
                   {row.rfServices > 0 ? formatCurrency(row.rfServices) : ""}
                 </td>
-                <td className="px-3 py-1.5 text-right tabular-nums font-mono">
-                  {row.matTotal > 0 ? formatCurrency(row.matTotal) : ""}
-                </td>
-                <td className="px-3 py-1.5 text-right tabular-nums font-mono">
-                  {row.laborTotal > 0 ? row.laborTotal.toFixed(4) : ""}
-                </td>
               </tr>
             ))}
           </tbody>
@@ -190,12 +178,6 @@ export function NTIReportPreview({ tech, coloSites, materialContingency, laborCo
               <td className="px-3 py-2" />
               <td className="px-3 py-2 text-right tabular-nums font-mono">
                 {totalRF > 0 ? formatCurrency(totalRF) : "—"}
-              </td>
-              <td className="px-3 py-2 text-right tabular-nums font-mono">
-                {totalMat > 0 ? formatCurrency(totalMat) : "—"}
-              </td>
-              <td className="px-3 py-2 text-right tabular-nums font-mono">
-                {totalLab > 0 ? totalLab.toFixed(4) : "—"}
               </td>
             </tr>
           </tfoot>
