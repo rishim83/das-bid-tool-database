@@ -21,8 +21,6 @@ import { ChevronRight, ChevronDown } from "lucide-react";
 // Lines 5 and 6 are folded into Install (2) and PM (4) sub-rows
 const FOLDED_ITEMS = new Set([5, 6]);
 
-// Line 7 formula tooltip
-const ADDL_MAT_FORMULA = "Additional Materials × Material Contingency × Mark Up";
 
 // Formulas for simple (non-compound) main rows
 const SIMPLE_FORMULAS: Record<number, string> = {
@@ -37,6 +35,8 @@ interface SubRowDef {
   total: number;
 }
 
+interface AdditionalMaterial { name: string; value: number; }
+
 interface Props {
   quote: TechnologyQuote;
   coloSites: ColoSite[];
@@ -48,6 +48,7 @@ interface Props {
   materialSafety?: number;
   laborSafety?: number;
   equipMarkUp?: number;
+  additionalMaterials?: AdditionalMaterial[];
 }
 
 function FormulaCell({
@@ -82,6 +83,7 @@ export function QuoteTable({
   materialSafety = 1,
   laborSafety = 1,
   equipMarkUp = 1,
+  additionalMaterials = [],
 }: Props) {
   const tableLabel = TECHNOLOGY_LABELS[quote.type];
   const [expandedLines, setExpandedLines] = useState<Set<number>>(new Set());
@@ -132,8 +134,6 @@ export function QuoteTable({
               {quote.lines.map((line) => {
                 // Lines 5 and 6 are rendered as sub-rows of PM and Install — skip as main rows
                 if (FOLDED_ITEMS.has(line.item)) return null;
-                // Line 7 (Additional Materials) — skip if zero
-                if (line.item === 7 && line.totalPrice === 0) return null;
 
                 const isInstall = line.item === 2;
                 const isEquipment = line.item === 3;
@@ -207,46 +207,57 @@ export function QuoteTable({
 
                 const equipTaxTotal = taxPercent > 0 ? line.totalPrice * (taxPercent / 100) : 0;
                 if (isEquipment) {
-                  const hasMaterialContingency = materialSafety !== 1 || equipMarkUp !== 1;
-                  if (hasMaterialContingency) {
-                    // Raw BOM cost (back-calculated)
-                    const rawBase = materialSafety * equipMarkUp !== 0
-                      ? line.totalPrice / materialSafety / equipMarkUp
-                      : line.totalPrice;
+                  const addlMatTotal = additionalMaterials.filter((m) => m.value > 0).reduce((s, m) => s + m.value, 0);
+                  const divisor = materialSafety * equipMarkUp;
+                  // rawCombined = bomEquip + additionalMaterials (before contingency + markup)
+                  const rawCombined = divisor !== 0 ? line.totalPrice / divisor : line.totalPrice;
+                  const rawBOMOnly = rawCombined - addlMatTotal;
+                  const hasBreakdown = materialSafety !== 1 || equipMarkUp !== 1 || addlMatTotal > 0;
+
+                  if (hasBreakdown) {
+                    // Equipment Base (BOM only)
                     subRows.push({
                       label: "Equipment Base",
                       formula: "Raw BOM Equipment Cost",
-                      getValue: (coloId) => materialSafety * equipMarkUp !== 0
-                        ? (line.values[coloId] || 0) / materialSafety / equipMarkUp
-                        : line.values[coloId] || 0,
-                      total: rawBase,
+                      getValue: (coloId) => {
+                        const raw = divisor !== 0 ? (line.values[coloId] || 0) / divisor : line.values[coloId] || 0;
+                        return raw - (line.totalPrice > 0 ? addlMatTotal * (line.values[coloId] || 0) / line.totalPrice : 0);
+                      },
+                      total: rawBOMOnly,
                     });
+                    // Individual additional material lines
+                    additionalMaterials.filter((m) => m.value > 0).forEach((m) => {
+                      subRows.push({
+                        label: m.name || "Additional Material",
+                        formula: "Additional Material (raw cost)",
+                        getValue: (coloId) => line.totalPrice > 0
+                          ? m.value * (line.values[coloId] || 0) / line.totalPrice
+                          : 0,
+                        total: m.value,
+                      });
+                    });
+                    // Contingency on combined base
                     if (materialSafety !== 1) {
-                      const safetyAdder = rawBase * (materialSafety - 1);
                       subRows.push({
                         label: `Material Contingency (×${materialSafety.toFixed(2)})`,
-                        formula: `Base × (Material Contingency − 1)`,
+                        formula: `(Equipment Base + Additional Materials) × (Material Contingency − 1)`,
                         getValue: (coloId) => {
-                          const base = materialSafety * equipMarkUp !== 0
-                            ? (line.values[coloId] || 0) / materialSafety / equipMarkUp
-                            : line.values[coloId] || 0;
-                          return base * (materialSafety - 1);
+                          const raw = divisor !== 0 ? (line.values[coloId] || 0) / divisor : line.values[coloId] || 0;
+                          return raw * (materialSafety - 1);
                         },
-                        total: safetyAdder,
+                        total: rawCombined * (materialSafety - 1),
                       });
                     }
+                    // Markup on combined base × contingency
                     if (equipMarkUp !== 1) {
-                      const markupAdder = rawBase * materialSafety * (equipMarkUp - 1);
                       subRows.push({
                         label: `Mark Up (×${equipMarkUp.toFixed(2)})`,
-                        formula: `Base × Material Contingency × (Mark Up − 1)`,
+                        formula: `(Equipment Base + Additional Materials) × Material Contingency × (Mark Up − 1)`,
                         getValue: (coloId) => {
-                          const base = materialSafety * equipMarkUp !== 0
-                            ? (line.values[coloId] || 0) / materialSafety / equipMarkUp
-                            : line.values[coloId] || 0;
-                          return base * materialSafety * (equipMarkUp - 1);
+                          const raw = divisor !== 0 ? (line.values[coloId] || 0) / divisor : line.values[coloId] || 0;
+                          return raw * materialSafety * (equipMarkUp - 1);
                         },
-                        total: markupAdder,
+                        total: rawCombined * materialSafety * (equipMarkUp - 1),
                       });
                     }
                   } else {
@@ -339,8 +350,6 @@ export function QuoteTable({
                   const parts = ["PM", "PM Travel"];
                   if (adminPercent > 0) parts.push(`Admin (${adminPercent}%)`);
                   mainFormula = parts.join(" + ");
-                } else if (line.item === 7) {
-                  mainFormula = ADDL_MAT_FORMULA;
                 } else {
                   mainFormula = SIMPLE_FORMULAS[line.item] ?? "";
                 }

@@ -1102,6 +1102,7 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
                           materialSafety={project.inputParameters.materialSafety ?? 1}
                           laborSafety={project.inputParameters.laborSafety ?? 1}
                           equipMarkUp={project.inputParameters.markUp ?? 1}
+                          additionalMaterials={(tech.additionalMaterials ?? []).filter((m) => m.value > 0)}
                         />
                       </TabsContent>
                     );
