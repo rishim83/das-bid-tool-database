@@ -21,6 +21,9 @@ import { ChevronRight, ChevronDown } from "lucide-react";
 // Lines 5 and 6 are folded into Install (2) and PM (4) sub-rows
 const FOLDED_ITEMS = new Set([5, 6]);
 
+// Line 7 formula tooltip
+const ADDL_MAT_FORMULA = "Additional Materials × Material Contingency × Mark Up";
+
 // Formulas for simple (non-compound) main rows
 const SIMPLE_FORMULAS: Record<number, string> = {
   1: "SUM(RF Line Items) × Sub Mark Up",
@@ -129,6 +132,8 @@ export function QuoteTable({
               {quote.lines.map((line) => {
                 // Lines 5 and 6 are rendered as sub-rows of PM and Install — skip as main rows
                 if (FOLDED_ITEMS.has(line.item)) return null;
+                // Line 7 (Additional Materials) — skip if zero
+                if (line.item === 7 && line.totalPrice === 0) return null;
 
                 const isInstall = line.item === 2;
                 const isEquipment = line.item === 3;
@@ -334,6 +339,8 @@ export function QuoteTable({
                   const parts = ["PM", "PM Travel"];
                   if (adminPercent > 0) parts.push(`Admin (${adminPercent}%)`);
                   mainFormula = parts.join(" + ");
+                } else if (line.item === 7) {
+                  mainFormula = ADDL_MAT_FORMULA;
                 } else {
                   mainFormula = SIMPLE_FORMULAS[line.item] ?? "";
                 }

@@ -238,8 +238,7 @@ export function computeEffectiveEquipmentCostPerColo(
   const totalBomCost = Object.values(rawCostPerColo).reduce((s, v) => s + (v || 0), 0);
 
   const waterAndIce = tech.waterAndIce ?? 0;
-  const additionalMaterials = (tech.additionalMaterials ?? []).reduce((s, m) => s + (m.value || 0), 0);
-  const totalExtras = waterAndIce + additionalMaterials;
+  const totalExtras = waterAndIce;
 
   if (totalExtras === 0) return rawCostPerColo;
 
@@ -316,6 +315,22 @@ export function calculateTechnologyQuote(
     { item: 4, description: "PM", calc: (c) => calcPM(effectiveTech, c, params, numberOfGuys) },
     { item: 5, description: "PM Travel", calc: (c) => calcPMTravel(effectiveTech, c, pmTravelPerTrip) },
     { item: 6, description: "Install Travel", calc: line6Calc },
+    {
+      item: 7,
+      description: "Additional Materials",
+      calc: (() => {
+        const addlMatTotal = (tech.additionalMaterials ?? []).reduce((s, m) => s + (m.value || 0), 0);
+        if (addlMatTotal === 0) return () => 0;
+        // Distribute proportionally across colos using equipment cost as weight, else equal split
+        const totalEquip = coloIds.reduce((s, id) => s + (tech.equipmentCost[id] || 0), 0);
+        return (c: string) => {
+          const share = totalEquip > 0
+            ? (tech.equipmentCost[c] || 0) / totalEquip
+            : 1 / coloIds.length;
+          return addlMatTotal * share * params.materialSafety * params.markUp;
+        };
+      })(),
+    },
   ];
 
   const lines: QuoteLine[] = lineDefinitions.map(({ item, description, calc }) => {
