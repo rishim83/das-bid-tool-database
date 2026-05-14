@@ -211,7 +211,7 @@ export function QuoteTable({
                   const divisor = materialSafety * equipMarkUp;
                   // rawCombined = bomEquip + additionalMaterials (before contingency + markup)
                   const rawCombined = divisor !== 0 ? line.totalPrice / divisor : line.totalPrice;
-                  const rawBOMOnly = rawCombined - addlMatTotal;
+                  const rawBOMOnly = Math.max(0, rawCombined - addlMatTotal);
                   const hasBreakdown = materialSafety !== 1 || equipMarkUp !== 1 || addlMatTotal > 0;
 
                   if (hasBreakdown) {
@@ -221,7 +221,7 @@ export function QuoteTable({
                       formula: "Raw BOM Equipment Cost",
                       getValue: (coloId) => {
                         const raw = divisor !== 0 ? (line.values[coloId] || 0) / divisor : line.values[coloId] || 0;
-                        return raw - (line.totalPrice > 0 ? addlMatTotal * (line.values[coloId] || 0) / line.totalPrice : 0);
+                        return Math.max(0, raw - (line.totalPrice > 0 ? addlMatTotal * (line.values[coloId] || 0) / line.totalPrice : 0));
                       },
                       total: rawBOMOnly,
                     });
