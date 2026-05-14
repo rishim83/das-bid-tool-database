@@ -57,13 +57,14 @@ function QuoteDocument({ project }: { project: Project }) {
 
   // Effective techs: same as useProject — installLaborHours and equipmentCost include dynamic extras
   const effectiveTechs = useMemo(() => {
+    const coloIds = project.coloSites.map((c) => c.id);
     return project.technologies.map((tech) => {
       if (!tech.enabled) return tech;
       const effectiveHours = computeEffectiveLaborHoursPerColo(tech, techPsd, numGuys, hpd);
-      const effectiveEquipment = computeEffectiveEquipmentCostPerColo(tech);
+      const effectiveEquipment = computeEffectiveEquipmentCostPerColo(tech, coloIds);
       return { ...tech, installLaborHours: effectiveHours, equipmentCost: effectiveEquipment };
     });
-  }, [project.technologies, techPsd, numGuys, hpd]);
+  }, [project.technologies, project.coloSites, techPsd, numGuys, hpd]);
 
   // Total install labor hours across all enabled techs (matches LaborSummary)
   const totalAllLaborHours = useMemo(() => {

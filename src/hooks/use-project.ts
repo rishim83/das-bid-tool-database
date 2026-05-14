@@ -58,13 +58,14 @@ export function useProject(initialProject: Project) {
   // Effective techs: installLaborHours replaced with dynamically-computed totals
   // (raw BOM hours + current extras from project settings). NC only — NTI is unchanged.
   const effectiveTechs = useMemo(() => {
+    const coloIds = project.coloSites.map((c) => c.id);
     return project.technologies.map((tech) => {
       if (!tech.enabled) return tech;
       const effectiveHours = computeEffectiveLaborHoursPerColo(tech, psd, numGuys, hpd);
-      const effectiveEquipment = computeEffectiveEquipmentCostPerColo(tech);
+      const effectiveEquipment = computeEffectiveEquipmentCostPerColo(tech, coloIds);
       return { ...tech, installLaborHours: effectiveHours, equipmentCost: effectiveEquipment };
     });
-  }, [project.technologies, psd, numGuys, hpd]);
+  }, [project.technologies, project.coloSites, psd, numGuys, hpd]);
 
   // Calculate schedule
   const scheduleCalculated = useMemo(

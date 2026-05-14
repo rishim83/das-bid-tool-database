@@ -233,6 +233,7 @@ export function computeEffectiveLaborHoursPerColo(
  */
 export function computeEffectiveEquipmentCostPerColo(
   tech: TechnologyConfig,
+  allColoIds: string[] = [],
 ): Record<string, number> {
   const rawCostPerColo = tech.equipmentCost;
   const totalBomCost = Object.values(rawCostPerColo).reduce((s, v) => s + (v || 0), 0);
@@ -243,7 +244,8 @@ export function computeEffectiveEquipmentCostPerColo(
 
   if (totalExtras === 0) return rawCostPerColo;
 
-  const coloIds = Object.keys(rawCostPerColo);
+  // Use BOM keys, falling back to the full project colo list when BOM has no entries
+  const coloIds = Object.keys(rawCostPerColo).length > 0 ? Object.keys(rawCostPerColo) : allColoIds;
   if (coloIds.length === 0) return rawCostPerColo;
 
   const result: Record<string, number> = {};
