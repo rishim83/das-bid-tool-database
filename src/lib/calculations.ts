@@ -198,15 +198,17 @@ export function computeLaborExtrasBreakdown(
   const rawHoursPerColo = tech.installLaborHours;
   const totalBomHours = Object.values(rawHoursPerColo).reduce((s, h) => s + (h || 0), 0);
 
-  if (totalBomHours === 0) {
-    return { commissioningHours: 0, shuttleHours: 0, stretchHours: 0, compositeHours: 0, liftHours: 0 };
-  }
-
   const badgingHours = !!(psd?.badgingSafety) ? Math.max(numberOfGuys, 1) * 4 : 0;
   const materialHandlingHours = tech.materialHandlingHours ?? 0;
   const commissioningHours = tech.commissioningSupport ?? 0;
   const additionalLaborHours = (tech.additionalLaborItems ?? []).reduce((s, i) => s + (i.hours || 0), 0);
   const baseHours = totalBomHours + badgingHours + materialHandlingHours + commissioningHours + additionalLaborHours;
+
+  // When nothing exists at all, only composite cleanup can still apply
+  if (baseHours === 0) {
+    const compositeHours = Number(psd?.extras?.compositeCleanup ?? 0);
+    return { commissioningHours: 0, shuttleHours: 0, stretchHours: 0, compositeHours, liftHours: 0 };
+  }
 
   const hpd = hoursPerDay || 8;
   const baseDays = baseHours > 0 ? baseHours / hpd : 0;
@@ -223,38 +225,53 @@ export function computeLaborExtrasBreakdown(
  * Returns effective per-colo labor hours for a NC tech by dynamically
  * layering all extras (shuttle, stretch, lift, badging, MH, commissioning,
  * additional labor) on top of the raw BOM hours stored in installLaborHours.
+ * Pass allColoIds so extras can be distributed even when there are no BOM entries.
  */
 export function computeEffectiveLaborHoursPerColo(
   tech: TechnologyConfig,
   psd: ProjectSpecificDetails | undefined,
   numberOfGuys: number,
   hoursPerDay: number,
+  allColoIds: string[] = [],
 ): Record<string, number> {
   const rawHoursPerColo = tech.installLaborHours;
   const totalBomHours = Object.values(rawHoursPerColo).reduce((s, h) => s + (h || 0), 0);
-
-  if (totalBomHours === 0) return rawHoursPerColo;
 
   const badgingHours = !!(psd?.badgingSafety) ? Math.max(numberOfGuys, 1) * 4 : 0;
   const materialHandlingHours = tech.materialHandlingHours ?? 0;
   const commissioningHours = tech.commissioningSupport ?? 0;
   const additionalLaborHours = (tech.additionalLaborItems ?? []).reduce((s, i) => s + (i.hours || 0), 0);
   const baseHours = totalBomHours + badgingHours + materialHandlingHours + commissioningHours + additionalLaborHours;
+  const compositeExtra = Number(psd?.extras?.compositeCleanup ?? 0);
+
+  // Nothing to compute at all
+  if (baseHours === 0 && compositeExtra === 0) return rawHoursPerColo;
 
   const hpd = hoursPerDay || 8;
   const baseDays = baseHours > 0 ? baseHours / hpd : 0;
   const guys = Math.max(numberOfGuys, 1);
-  const shuttleHours    = !!(psd?.extras?.shuttleServices) && baseHours > 0 ? baseDays : 0;
-  const stretchHours    = !!(psd?.extras?.stretchAndFlex)  && baseHours > 0 ? baseDays * 0.5 : 0;
-  const compositeHours  = Number(psd?.extras?.compositeCleanup ?? 0);
-  const liftHours       = !!(psd?.extras?.liftSpotters)    && baseHours > 0 ? (0.65 * baseHours) / guys : 0;
+  const shuttleHours   = !!(psd?.extras?.shuttleServices) && baseHours > 0 ? baseDays : 0;
+  const stretchHours   = !!(psd?.extras?.stretchAndFlex)  && baseHours > 0 ? baseDays * 0.5 : 0;
+  const liftHours      = !!(psd?.extras?.liftSpotters)    && baseHours > 0 ? (0.65 * baseHours) / guys : 0;
 
-  const totalEffectiveHours = baseHours + shuttleHours + stretchHours + compositeHours + liftHours;
+  const totalEffectiveHours = baseHours + shuttleHours + stretchHours + compositeExtra + liftHours;
+
+  // Use BOM keys for distribution, falling back to allColoIds when no BOM entries
+  const coloIds = Object.keys(rawHoursPerColo).length > 0 ? Object.keys(rawHoursPerColo) : allColoIds;
+  if (coloIds.length === 0) return rawHoursPerColo;
 
   const result: Record<string, number> = {};
-  for (const [coloId, rawHours] of Object.entries(rawHoursPerColo)) {
-    const pct = (rawHours || 0) / totalBomHours;
-    result[coloId] = Math.round(totalEffectiveHours * pct * 100) / 100;
+  if (totalBomHours === 0) {
+    // No BOM weights — distribute equally across colos
+    const equalShare = totalEffectiveHours / coloIds.length;
+    for (const coloId of coloIds) {
+      result[coloId] = Math.round(equalShare * 100) / 100;
+    }
+  } else {
+    for (const [coloId, rawHours] of Object.entries(rawHoursPerColo)) {
+      const pct = (rawHours || 0) / totalBomHours;
+      result[coloId] = Math.round(totalEffectiveHours * pct * 100) / 100;
+    }
   }
   return result;
 }

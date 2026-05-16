@@ -61,7 +61,7 @@ export function useProject(initialProject: Project) {
     const coloIds = project.coloSites.map((c) => c.id);
     return project.technologies.map((tech) => {
       if (!tech.enabled) return tech;
-      const effectiveHours = computeEffectiveLaborHoursPerColo(tech, psd, numGuys, hpd);
+      const effectiveHours = computeEffectiveLaborHoursPerColo(tech, psd, numGuys, hpd, coloIds);
       const effectiveEquipment = computeEffectiveEquipmentCostPerColo(tech, coloIds);
       return { ...tech, installLaborHours: effectiveHours, equipmentCost: effectiveEquipment };
     });

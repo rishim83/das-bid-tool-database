@@ -26,7 +26,7 @@ export function PMTravelTable({ travel, calculated, onChange }: Props) {
           <Input
             type="number"
             step="1"
-            value={travel.daysPerTrip}
+            value={travel.daysPerTrip || ""}
             onChange={(e) => update("daysPerTrip", parseFloat(e.target.value) || 0)}
             className="h-7 w-20 bg-input/40 border-border/50 text-right text-sm font-mono tabular-nums rounded-md"
           />
@@ -38,7 +38,7 @@ export function PMTravelTable({ travel, calculated, onChange }: Props) {
             <Input
               type="number"
               step="any"
-              value={travel.flight}
+              value={travel.flight || ""}
               onChange={(e) => update("flight", parseFloat(e.target.value) || 0)}
               className="h-7 w-24 bg-input/40 border-border/50 text-right text-sm font-mono tabular-nums rounded-md"
             />
@@ -51,7 +51,7 @@ export function PMTravelTable({ travel, calculated, onChange }: Props) {
             <Input
               type="number"
               step="any"
-              value={travel.hotelPerDay}
+              value={travel.hotelPerDay || ""}
               onChange={(e) => update("hotelPerDay", parseFloat(e.target.value) || 0)}
               className="h-7 w-24 bg-input/40 border-border/50 text-right text-sm font-mono tabular-nums rounded-md"
             />
@@ -67,7 +67,7 @@ export function PMTravelTable({ travel, calculated, onChange }: Props) {
             <Input
               type="number"
               step="any"
-              value={travel.carRentalPerDay}
+              value={travel.carRentalPerDay || ""}
               onChange={(e) => update("carRentalPerDay", parseFloat(e.target.value) || 0)}
               className="h-7 w-24 bg-input/40 border-border/50 text-right text-sm font-mono tabular-nums rounded-md"
             />
@@ -83,7 +83,7 @@ export function PMTravelTable({ travel, calculated, onChange }: Props) {
             <Input
               type="number"
               step="any"
-              value={travel.perDiemPerDay}
+              value={travel.perDiemPerDay || ""}
               onChange={(e) => update("perDiemPerDay", parseFloat(e.target.value) || 0)}
               className="h-7 w-24 bg-input/40 border-border/50 text-right text-sm font-mono tabular-nums rounded-md"
             />

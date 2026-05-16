@@ -29,7 +29,7 @@ function ParamRow({
         <Input
           type="number"
           step="any"
-          value={value}
+          value={value || ""}
           onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
           className="h-7 w-24 bg-input/40 border-border/50 text-right text-sm font-mono tabular-nums rounded-md"
         />

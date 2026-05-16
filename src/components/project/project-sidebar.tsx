@@ -192,7 +192,7 @@ function InlineField({
         <Input
           type="number"
           step={step}
-          value={value}
+          value={value || ""}
           onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
           className="h-7 w-20 border-0 shadow-none bg-transparent text-right text-xs font-mono tabular-nums focus-visible:ring-0 focus-visible:ring-offset-0"
         />
@@ -1040,7 +1040,7 @@ export function ProjectSidebar({
                       />
                       <Input
                         type="number" step="any" min={0}
-                        value={item.hours}
+                        value={item.hours || ""}
                         onChange={(e) => updateLaborItem(item.id, "hours", parseFloat(e.target.value) || 0)}
                         className="h-7 w-14 bg-input/50 border-border/50 text-right text-xs font-mono tabular-nums rounded-md shrink-0"
                       />
@@ -1071,7 +1071,7 @@ export function ProjectSidebar({
                       <span className="text-[10px] text-muted-foreground/60 shrink-0">$</span>
                       <Input
                         type="number" step="any" min={0}
-                        value={item.value}
+                        value={item.value || ""}
                         onChange={(e) => updateMaterialItem(item.id, "value", parseFloat(e.target.value) || 0)}
                         className="h-7 w-20 bg-input/50 border-border/50 text-right text-xs font-mono tabular-nums rounded-md shrink-0"
                       />
@@ -1101,7 +1101,7 @@ export function ProjectSidebar({
                       <span className="text-[10px] text-muted-foreground/60 shrink-0">$</span>
                       <Input
                         type="number" step="any" min={0}
-                        value={sub.value}
+                        value={sub.value || ""}
                         onChange={(e) => updateSub(sub.id, "value", parseFloat(e.target.value) || 0)}
                         className="h-7 w-20 bg-input/50 border-border/50 text-right text-xs font-mono tabular-nums rounded-md shrink-0"
                       />
@@ -1124,21 +1124,21 @@ export function ProjectSidebar({
                   <div className="flex items-center gap-1 flex-wrap">
                     <Input
                       type="number" step="1" min={0}
-                      value={rental.lift.numberOfLifts ?? 1}
+                      value={rental.lift.numberOfLifts || ""}
                       onChange={(e) => updateLift("numberOfLifts", parseFloat(e.target.value) || 0)}
                       className="h-7 w-10 bg-input/50 border-border/50 text-right text-xs font-mono rounded-md shrink-0"
                     />
                     <span className="text-[10px] text-muted-foreground/60">×</span>
                     <Input
                       type="number" step="any" min={0}
-                      value={rental.lift.months}
+                      value={rental.lift.months || ""}
                       onChange={(e) => updateLift("months", parseFloat(e.target.value) || 0)}
                       className="h-7 w-10 bg-input/50 border-border/50 text-right text-xs font-mono rounded-md shrink-0"
                     />
                     <span className="text-[10px] text-muted-foreground/60 shrink-0">mo @$</span>
                     <Input
                       type="number" step="any" min={0}
-                      value={rental.lift.costPerMonth}
+                      value={rental.lift.costPerMonth || ""}
                       onChange={(e) => updateLift("costPerMonth", parseFloat(e.target.value) || 0)}
                       className="h-7 w-16 bg-input/50 border-border/50 text-right text-xs font-mono rounded-md shrink-0"
                     />
@@ -1162,14 +1162,14 @@ export function ProjectSidebar({
                       />
                       <Input
                         type="number" step="any" min={0}
-                        value={item.months}
+                        value={item.months || ""}
                         onChange={(e) => updateRentalItem(item.id, "months", parseFloat(e.target.value) || 0)}
                         className="h-7 w-10 bg-input/50 border-border/50 text-right text-xs font-mono rounded-md shrink-0"
                       />
                       <span className="text-[10px] text-muted-foreground/60 shrink-0">mo</span>
                       <Input
                         type="number" step="any" min={0}
-                        value={item.costPerMonth}
+                        value={item.costPerMonth || ""}
                         onChange={(e) => updateRentalItem(item.id, "costPerMonth", parseFloat(e.target.value) || 0)}
                         className="h-7 w-16 bg-input/50 border-border/50 text-right text-xs font-mono rounded-md shrink-0"
                       />

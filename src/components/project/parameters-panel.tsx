@@ -45,7 +45,7 @@ function ParamRow({
         <Input
           type="number"
           step="any"
-          value={value}
+          value={value || ""}
           onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
           className="h-7 w-24 bg-input/40 border-border/50 text-right text-sm font-mono tabular-nums rounded-md"
         />
@@ -211,7 +211,7 @@ export function ParametersPanel({
             <Input
               type="number"
               step="1"
-              value={pmTravel.daysPerTrip}
+              value={pmTravel.daysPerTrip || ""}
               onChange={(e) => updateTravel("daysPerTrip", parseFloat(e.target.value) || 0)}
               className="h-7 w-20 bg-input/40 border-border/50 text-right text-sm font-mono tabular-nums rounded-md"
             />
@@ -223,7 +223,7 @@ export function ParametersPanel({
               <Input
                 type="number"
                 step="any"
-                value={pmTravel.flight}
+                value={pmTravel.flight || ""}
                 onChange={(e) => updateTravel("flight", parseFloat(e.target.value) || 0)}
                 className="h-7 w-24 bg-input/40 border-border/50 text-right text-sm font-mono tabular-nums rounded-md"
               />
@@ -236,7 +236,7 @@ export function ParametersPanel({
               <Input
                 type="number"
                 step="any"
-                value={pmTravel.hotelPerDay}
+                value={pmTravel.hotelPerDay || ""}
                 onChange={(e) => updateTravel("hotelPerDay", parseFloat(e.target.value) || 0)}
                 className="h-7 w-24 bg-input/40 border-border/50 text-right text-sm font-mono tabular-nums rounded-md"
               />
@@ -252,7 +252,7 @@ export function ParametersPanel({
               <Input
                 type="number"
                 step="any"
-                value={pmTravel.carRentalPerDay}
+                value={pmTravel.carRentalPerDay || ""}
                 onChange={(e) => updateTravel("carRentalPerDay", parseFloat(e.target.value) || 0)}
                 className="h-7 w-24 bg-input/40 border-border/50 text-right text-sm font-mono tabular-nums rounded-md"
               />
@@ -268,7 +268,7 @@ export function ParametersPanel({
               <Input
                 type="number"
                 step="any"
-                value={pmTravel.perDiemPerDay}
+                value={pmTravel.perDiemPerDay || ""}
                 onChange={(e) => updateTravel("perDiemPerDay", parseFloat(e.target.value) || 0)}
                 className="h-7 w-24 bg-input/40 border-border/50 text-right text-sm font-mono tabular-nums rounded-md"
               />
