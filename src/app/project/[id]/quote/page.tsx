@@ -182,6 +182,11 @@ function QuoteDocument({ project }: { project: Project }) {
 
       const rows: (string | number)[][] = [headers];
 
+      // Per-tech labor breakdown values
+      const laborSafety = project.inputParameters.laborSafety ?? 1;
+      const hourlyRate = project.inputParameters.hourlyRate ?? 0;
+      const techCommissioningCost = (tech.commissioningSupport ?? 0) * hourlyRate * laborSafety;
+
       // Data rows (skip folded items 5 & 6 — they appear inside Install/PM)
       quote.lines.forEach((line) => {
         if (line.item === 5 || line.item === 6) return;
@@ -226,6 +231,38 @@ function QuoteDocument({ project }: { project: Project }) {
 
         row.push(Number(displayTotal.toFixed(2)));
         rows.push(row);
+
+        // After Install row: add commissioning support and labor contingency sub-rows
+        if (isInstall) {
+          const baseLaborTotal = laborSafety !== 0 ? line.totalPrice / laborSafety : line.totalPrice;
+          const commissionBase = laborSafety !== 0 ? techCommissioningCost / laborSafety : techCommissioningCost;
+
+          if (techCommissioningCost > 0) {
+            const commRow: (string | number)[] = ["", "  └ Commissioning Support"];
+            if (!isSingleColo) {
+              coloSites.forEach((c) => {
+                const ratio = line.totalPrice > 0 ? (line.values[c.id] || 0) / line.totalPrice : 1 / coloSites.length;
+                commRow.push(Number((ratio * commissionBase).toFixed(2)));
+              });
+            }
+            commRow.push(Number(commissionBase.toFixed(2)));
+            rows.push(commRow);
+          }
+
+          if (laborSafety !== 1) {
+            const contingencyTotal = baseLaborTotal * (laborSafety - 1);
+            const contRow: (string | number)[] = ["", `  └ Labor Contingency (×${laborSafety.toFixed(2)})`];
+            if (!isSingleColo) {
+              coloSites.forEach((c) => {
+                const base = line.values[c.id] || 0;
+                const coloCont = laborSafety !== 0 ? (base / laborSafety) * (laborSafety - 1) : 0;
+                contRow.push(Number(coloCont.toFixed(2)));
+              });
+            }
+            contRow.push(Number(contingencyTotal.toFixed(2)));
+            rows.push(contRow);
+          }
+        }
       });
 
       // Total row
@@ -377,6 +414,7 @@ function QuoteDocument({ project }: { project: Project }) {
                 laborSafety={project.inputParameters.laborSafety ?? 1}
                 equipMarkUp={project.inputParameters.markUp ?? 1}
                 additionalMaterials={(tech.additionalMaterials ?? []).filter((m) => m.value > 0)}
+                commissioningCost={(tech.commissioningSupport ?? 0) * (project.inputParameters.hourlyRate ?? 0) * (project.inputParameters.laborSafety ?? 1)}
               />
             </div>
           );

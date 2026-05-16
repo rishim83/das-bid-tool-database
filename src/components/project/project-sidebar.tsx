@@ -1008,7 +1008,7 @@ export function ProjectSidebar({
                 suffix="hrs"
               />
               <InlineField
-                label="Commissioning"
+                label="Commissioning Support"
                 value={tech.commissioningSupport ?? 0}
                 onChange={(v) => update({ commissioningSupport: v })}
                 suffix="hrs"

@@ -1103,6 +1103,7 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
                           laborSafety={project.inputParameters.laborSafety ?? 1}
                           equipMarkUp={project.inputParameters.markUp ?? 1}
                           additionalMaterials={(tech.additionalMaterials ?? []).filter((m) => m.value > 0)}
+                          commissioningCost={(tech.commissioningSupport ?? 0) * (project.inputParameters.hourlyRate ?? 0) * (project.inputParameters.laborSafety ?? 1)}
                         />
                       </TabsContent>
                     );

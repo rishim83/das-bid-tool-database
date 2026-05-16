@@ -49,6 +49,7 @@ interface Props {
   laborSafety?: number;
   equipMarkUp?: number;
   additionalMaterials?: AdditionalMaterial[];
+  commissioningCost?: number;
 }
 
 function FormulaCell({
@@ -84,6 +85,7 @@ export function QuoteTable({
   laborSafety = 1,
   equipMarkUp = 1,
   additionalMaterials = [],
+  commissioningCost = 0,
 }: Props) {
   const tableLabel = TECHNOLOGY_LABELS[quote.type];
   const [expandedLines, setExpandedLines] = useState<Set<number>>(new Set());
@@ -144,30 +146,49 @@ export function QuoteTable({
                 const subRows: SubRowDef[] = [];
 
                 if (isInstall) {
-                  if (laborSafety !== 1) {
-                    // Show base + contingency adder separately
-                    const baseTotal = laborSafety !== 0 ? line.totalPrice / laborSafety : line.totalPrice;
+                  // Base = all effective hours × hourlyRate (before contingency)
+                  const baseLaborTotal = laborSafety !== 0 ? line.totalPrice / laborSafety : line.totalPrice;
+                  // Commissioning base = commissioning hours × hourlyRate (subset of baseLaborTotal)
+                  const commissionBase = laborSafety !== 0 ? commissioningCost / laborSafety : commissioningCost;
+                  const nonCommissionBase = baseLaborTotal - commissionBase;
+
+                  // Install Labor row (BOM + extras, excluding commissioning)
+                  subRows.push({
+                    label: commissioningCost > 0 ? "Install Labor" : (laborSafety !== 1 ? "Install Labor Base" : "Install Labor"),
+                    formula: "Labor Hours × Hourly Rate",
+                    getValue: (coloId) => {
+                      if (commissioningCost > 0) {
+                        const ratio = line.totalPrice > 0 ? (line.values[coloId] || 0) / line.totalPrice : 1 / coloSites.length;
+                        return ratio * nonCommissionBase;
+                      }
+                      return laborSafety !== 0 ? (line.values[coloId] || 0) / laborSafety : line.values[coloId] || 0;
+                    },
+                    total: commissioningCost > 0 ? nonCommissionBase : baseLaborTotal,
+                  });
+
+                  // Commissioning Support row (when > 0)
+                  if (commissioningCost > 0) {
                     subRows.push({
-                      label: "Install Labor Base",
-                      formula: "Labor Hours × Hourly Rate",
-                      getValue: (coloId) => laborSafety !== 0 ? (line.values[coloId] || 0) / laborSafety : line.values[coloId] || 0,
-                      total: baseTotal,
+                      label: "Commissioning Support",
+                      formula: "Commissioning Hours × Hourly Rate",
+                      getValue: (coloId) => {
+                        const ratio = line.totalPrice > 0 ? (line.values[coloId] || 0) / line.totalPrice : 1 / coloSites.length;
+                        return ratio * commissionBase;
+                      },
+                      total: commissionBase,
                     });
+                  }
+
+                  // Labor Contingency row (when laborSafety != 1)
+                  if (laborSafety !== 1) {
                     subRows.push({
                       label: `+ Labor Contingency (×${laborSafety.toFixed(2)})`,
-                      formula: `Base × (Labor Contingency − 1)`,
+                      formula: "Base × (Labor Contingency − 1)",
                       getValue: (coloId) => {
                         const base = laborSafety !== 0 ? (line.values[coloId] || 0) / laborSafety : 0;
                         return base * (laborSafety - 1);
                       },
-                      total: baseTotal * (laborSafety - 1),
-                    });
-                  } else {
-                    subRows.push({
-                      label: "Install Labor",
-                      formula: "Labor Hours × Hourly Rate",
-                      getValue: (coloId) => line.values[coloId] || 0,
-                      total: line.totalPrice,
+                      total: baseLaborTotal * (laborSafety - 1),
                     });
                   }
                   // Install Travel (line 6 folded in)
