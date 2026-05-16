@@ -49,7 +49,8 @@ interface Props {
   laborSafety?: number;
   equipMarkUp?: number;
   additionalMaterials?: AdditionalMaterial[];
-  commissioningCost?: number;
+  /** Pre-contingency (hourlyRate × hours, no laborSafety) named sub-items under Install */
+  laborSubItems?: { label: string; baseCost: number }[];
 }
 
 function FormulaCell({
@@ -85,7 +86,7 @@ export function QuoteTable({
   laborSafety = 1,
   equipMarkUp = 1,
   additionalMaterials = [],
-  commissioningCost = 0,
+  laborSubItems = [],
 }: Props) {
   const tableLabel = TECHNOLOGY_LABELS[quote.type];
   const [expandedLines, setExpandedLines] = useState<Set<number>>(new Set());
@@ -148,38 +149,38 @@ export function QuoteTable({
                 if (isInstall) {
                   // Base = all effective hours × hourlyRate (before contingency)
                   const baseLaborTotal = laborSafety !== 0 ? line.totalPrice / laborSafety : line.totalPrice;
-                  // Commissioning base = commissioning hours × hourlyRate (subset of baseLaborTotal)
-                  const commissionBase = laborSafety !== 0 ? commissioningCost / laborSafety : commissioningCost;
-                  const nonCommissionBase = baseLaborTotal - commissionBase;
+                  // Sum of named sub-item base costs (pre-contingency)
+                  const activeSubItems = laborSubItems.filter((s) => s.baseCost > 0);
+                  const subItemBaseTotal = activeSubItems.reduce((sum, s) => sum + s.baseCost, 0);
+                  const coreInstallBase = baseLaborTotal - subItemBaseTotal;
 
-                  // Install Labor row (BOM + extras, excluding commissioning)
+                  // Install Labor row (all hours minus named sub-items, pre-contingency)
                   subRows.push({
-                    label: commissioningCost > 0 ? "Install Labor" : (laborSafety !== 1 ? "Install Labor Base" : "Install Labor"),
+                    label: activeSubItems.length > 0 ? "Install Labor" : (laborSafety !== 1 ? "Install Labor Base" : "Install Labor"),
                     formula: "Labor Hours × Hourly Rate",
                     getValue: (coloId) => {
-                      if (commissioningCost > 0) {
-                        const ratio = line.totalPrice > 0 ? (line.values[coloId] || 0) / line.totalPrice : 1 / coloSites.length;
-                        return ratio * nonCommissionBase;
-                      }
-                      return laborSafety !== 0 ? (line.values[coloId] || 0) / laborSafety : line.values[coloId] || 0;
+                      const ratio = line.totalPrice > 0 ? (line.values[coloId] || 0) / line.totalPrice : 1 / coloSites.length;
+                      return activeSubItems.length > 0
+                        ? ratio * coreInstallBase
+                        : laborSafety !== 0 ? (line.values[coloId] || 0) / laborSafety : line.values[coloId] || 0;
                     },
-                    total: commissioningCost > 0 ? nonCommissionBase : baseLaborTotal,
+                    total: activeSubItems.length > 0 ? coreInstallBase : baseLaborTotal,
                   });
 
-                  // Commissioning Support row (when > 0)
-                  if (commissioningCost > 0) {
+                  // Named sub-items (commissioning, shuttle, etc.) — shown at pre-contingency cost
+                  activeSubItems.forEach((subItem) => {
                     subRows.push({
-                      label: "Commissioning Support",
-                      formula: "Commissioning Hours × Hourly Rate",
+                      label: subItem.label,
+                      formula: "Hours × Hourly Rate",
                       getValue: (coloId) => {
                         const ratio = line.totalPrice > 0 ? (line.values[coloId] || 0) / line.totalPrice : 1 / coloSites.length;
-                        return ratio * commissionBase;
+                        return ratio * subItem.baseCost;
                       },
-                      total: commissionBase,
+                      total: subItem.baseCost,
                     });
-                  }
+                  });
 
-                  // Labor Contingency row (when laborSafety != 1)
+                  // Labor Contingency row — covers all hours uniformly
                   if (laborSafety !== 1) {
                     subRows.push({
                       label: `+ Labor Contingency (×${laborSafety.toFixed(2)})`,

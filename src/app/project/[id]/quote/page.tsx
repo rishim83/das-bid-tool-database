@@ -17,6 +17,7 @@ import {
   calculateInstallTravel,
   computeEffectiveLaborHoursPerColo,
   computeEffectiveEquipmentCostPerColo,
+  computeLaborExtrasBreakdown,
   formatCurrency,
 } from "@/lib/calculations";
 import { TECHNOLOGY_LABELS, TECHNOLOGY_DOT } from "@/lib/constants";
@@ -185,7 +186,14 @@ function QuoteDocument({ project }: { project: Project }) {
       // Per-tech labor breakdown values
       const laborSafety = project.inputParameters.laborSafety ?? 1;
       const hourlyRate = project.inputParameters.hourlyRate ?? 0;
-      const techCommissioningCost = (tech.commissioningSupport ?? 0) * hourlyRate * laborSafety;
+      const extras = computeLaborExtrasBreakdown(tech, project.projectSpecificDetails, numGuys, hpd);
+      const techLaborSubItems = [
+        { label: "Commissioning Support", baseCost: extras.commissioningHours * hourlyRate },
+        { label: "Shuttle Services",      baseCost: extras.shuttleHours * hourlyRate },
+        { label: "Stretch & Flex",        baseCost: extras.stretchHours * hourlyRate },
+        { label: "Composite Cleanup",     baseCost: extras.compositeHours * hourlyRate },
+        { label: "Lift Spotters",         baseCost: extras.liftHours * hourlyRate },
+      ].filter((s) => s.baseCost > 0);
 
       // Data rows (skip folded items 5 & 6 — they appear inside Install/PM)
       quote.lines.forEach((line) => {
@@ -232,22 +240,21 @@ function QuoteDocument({ project }: { project: Project }) {
         row.push(Number(displayTotal.toFixed(2)));
         rows.push(row);
 
-        // After Install row: add commissioning support and labor contingency sub-rows
+        // After Install row: add named labor sub-items and labor contingency
         if (isInstall) {
           const baseLaborTotal = laborSafety !== 0 ? line.totalPrice / laborSafety : line.totalPrice;
-          const commissionBase = laborSafety !== 0 ? techCommissioningCost / laborSafety : techCommissioningCost;
 
-          if (techCommissioningCost > 0) {
-            const commRow: (string | number)[] = ["", "  └ Commissioning Support"];
+          techLaborSubItems.forEach((subItem) => {
+            const subRow: (string | number)[] = ["", `  └ ${subItem.label}`];
             if (!isSingleColo) {
               coloSites.forEach((c) => {
                 const ratio = line.totalPrice > 0 ? (line.values[c.id] || 0) / line.totalPrice : 1 / coloSites.length;
-                commRow.push(Number((ratio * commissionBase).toFixed(2)));
+                subRow.push(Number((ratio * subItem.baseCost).toFixed(2)));
               });
             }
-            commRow.push(Number(commissionBase.toFixed(2)));
-            rows.push(commRow);
-          }
+            subRow.push(Number(subItem.baseCost.toFixed(2)));
+            rows.push(subRow);
+          });
 
           if (laborSafety !== 1) {
             const contingencyTotal = baseLaborTotal * (laborSafety - 1);
@@ -414,7 +421,17 @@ function QuoteDocument({ project }: { project: Project }) {
                 laborSafety={project.inputParameters.laborSafety ?? 1}
                 equipMarkUp={project.inputParameters.markUp ?? 1}
                 additionalMaterials={(tech.additionalMaterials ?? []).filter((m) => m.value > 0)}
-                commissioningCost={(tech.commissioningSupport ?? 0) * (project.inputParameters.hourlyRate ?? 0) * (project.inputParameters.laborSafety ?? 1)}
+                laborSubItems={(() => {
+                  const rate = project.inputParameters.hourlyRate ?? 0;
+                  const ex = computeLaborExtrasBreakdown(tech, project.projectSpecificDetails, numGuys, hpd);
+                  return [
+                    { label: "Commissioning Support", baseCost: ex.commissioningHours * rate },
+                    { label: "Shuttle Services",      baseCost: ex.shuttleHours * rate },
+                    { label: "Stretch & Flex",        baseCost: ex.stretchHours * rate },
+                    { label: "Composite Cleanup",     baseCost: ex.compositeHours * rate },
+                    { label: "Lift Spotters",         baseCost: ex.liftHours * rate },
+                  ].filter((s) => s.baseCost > 0);
+                })()}
               />
             </div>
           );

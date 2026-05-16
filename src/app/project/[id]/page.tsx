@@ -24,7 +24,7 @@ const TECH_ACCENT_HEX: Record<string, string> = {
   PUBLIC_SAFETY: "#ef4444",
   ROIP: "#f97316",
 };
-import { formatCurrency } from "@/lib/calculations";
+import { formatCurrency, computeLaborExtrasBreakdown } from "@/lib/calculations";
 import { ArrowLeft, Check, FileSpreadsheet, Loader2, AlertCircle } from "lucide-react";
 // ExcelJS loaded dynamically inside downloadDetailedExcel to keep bundle lean
 import Link from "next/link";
@@ -1103,7 +1103,17 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
                           laborSafety={project.inputParameters.laborSafety ?? 1}
                           equipMarkUp={project.inputParameters.markUp ?? 1}
                           additionalMaterials={(tech.additionalMaterials ?? []).filter((m) => m.value > 0)}
-                          commissioningCost={(tech.commissioningSupport ?? 0) * (project.inputParameters.hourlyRate ?? 0) * (project.inputParameters.laborSafety ?? 1)}
+                          laborSubItems={(() => {
+                            const rate = project.inputParameters.hourlyRate ?? 0;
+                            const extras = computeLaborExtrasBreakdown(tech, psd, project.schedule.numberOfGuys, project.inputParameters.hoursPerDay ?? 8);
+                            return [
+                              { label: "Commissioning Support", baseCost: extras.commissioningHours * rate },
+                              { label: "Shuttle Services",      baseCost: extras.shuttleHours * rate },
+                              { label: "Stretch & Flex",        baseCost: extras.stretchHours * rate },
+                              { label: "Composite Cleanup",     baseCost: extras.compositeHours * rate },
+                              { label: "Lift Spotters",         baseCost: extras.liftHours * rate },
+                            ].filter((s) => s.baseCost > 0);
+                          })()}
                         />
                       </TabsContent>
                     );
