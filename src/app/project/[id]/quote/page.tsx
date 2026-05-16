@@ -66,14 +66,15 @@ function QuoteDocument({ project }: { project: Project }) {
     });
   }, [project.technologies, project.coloSites, techPsd, numGuys, hpd]);
 
-  // Total install labor hours across all enabled techs (matches LaborSummary)
+  // Total install labor hours across all enabled techs (matches LaborSummary) — scaled by laborSafety
   const totalAllLaborHours = useMemo(() => {
+    const laborSafety = project.inputParameters.laborSafety ?? 1;
     return effectiveTechs
       .filter((t) => t.enabled)
       .reduce((sum, tech) => {
         return sum + Object.values(tech.installLaborHours).reduce((s, h) => s + (h || 0), 0);
-      }, 0);
-  }, [effectiveTechs]);
+      }, 0) * laborSafety;
+  }, [effectiveTechs, project.inputParameters.laborSafety]);
 
   // Install travel
   const installTravelCalc = useMemo(() => {
@@ -372,6 +373,10 @@ function QuoteDocument({ project }: { project: Project }) {
                 subContractorTotal={techSubMarkup}
                 taxPercent={taxPercent}
                 installTravelActive={installTravelCalc !== null}
+                materialSafety={project.inputParameters.materialSafety ?? 1}
+                laborSafety={project.inputParameters.laborSafety ?? 1}
+                equipMarkUp={project.inputParameters.markUp ?? 1}
+                additionalMaterials={(tech.additionalMaterials ?? []).filter((m) => m.value > 0)}
               />
             </div>
           );
