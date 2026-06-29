@@ -92,29 +92,41 @@ function QuoteDocument({ project }: { project: Project }) {
   }, [project.installTravel, totalAllLaborHours, project.inputParameters, numGuys, hpd]);
 
   // Technology quotes (same logic as useProject)
-  const quotes: TechnologyQuote[] = useMemo(
-    () =>
-      effectiveTechs
-        .filter((t) => t.enabled)
-        .map((tech) => {
-          let installTravelOverride: number | undefined;
-          if (installTravelCalc) {
-            const techHours = Object.values(tech.installLaborHours).reduce((s, h) => s + (h || 0), 0);
-            const share = totalAllLaborHours > 0 ? techHours / totalAllLaborHours : 0;
-            installTravelOverride = installTravelCalc.markedUpTotal * share;
+  const quotes: TechnologyQuote[] = useMemo(() => {
+    const itCfg = project.installTravel ?? DEFAULT_INSTALL_TRAVEL;
+    const laborSafety = project.inputParameters.laborSafety ?? 1;
+    return effectiveTechs
+      .filter((t) => t.enabled)
+      .map((tech) => {
+        // Recalculate Install Travel for this tech's own hours — must match the
+        // "Install Travel w/ markup" figure shown in the sidebar's per-tech view,
+        // not a proportional split of the ALL-techs total.
+        let installTravelOverride: number | undefined;
+        if (installTravelCalc) {
+          const techHours = Object.values(tech.installLaborHours).reduce((s, h) => s + (h || 0), 0) * laborSafety;
+          if (techHours > 0) {
+            const techCalc = calculateInstallTravel(
+              itCfg,
+              techHours,
+              hpd,
+              numGuys,
+              project.inputParameters.travelIndirectMarkup ?? 1.23,
+              project.inputParameters.buyHourlyRate ?? 55
+            );
+            installTravelOverride = techCalc.markedUpTotal;
           }
-          return calculateTechnologyQuote(
-            tech,
-            project.coloSites,
-            project.inputParameters,
-            pmTravelCalculated.totalPerTrip,
-            numGuys,
-            0,
-            installTravelOverride
-          );
-        }),
-    [effectiveTechs, project.coloSites, project.inputParameters, pmTravelCalculated, numGuys, installTravelCalc, totalAllLaborHours]
-  );
+        }
+        return calculateTechnologyQuote(
+          tech,
+          project.coloSites,
+          project.inputParameters,
+          pmTravelCalculated.totalPerTrip,
+          numGuys,
+          0,
+          installTravelOverride
+        );
+      });
+  }, [effectiveTechs, project.coloSites, project.inputParameters, pmTravelCalculated, numGuys, installTravelCalc, project.installTravel, hpd]);
 
   // Per-tech helpers
   const travelMarkupMultiplier = project.inputParameters.travelIndirectMarkup ?? 1.23;
