@@ -155,7 +155,7 @@ export default function HomePage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">DAS Bid Tool</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-blue-500">DAS Bid Tool</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
               Bid estimation for DAS, Public Safety & ROIP
             </p>
