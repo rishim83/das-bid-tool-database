@@ -89,7 +89,10 @@ export function QuoteTable({
   laborSubItems = [],
 }: Props) {
   const tableLabel = TECHNOLOGY_LABELS[quote.type];
-  const [expandedLines, setExpandedLines] = useState<Set<number>>(new Set());
+  // Auto-expand Install line (item 2) when labor extras are present so shuttle/commissioning etc. are visible
+  const [expandedLines, setExpandedLines] = useState<Set<number>>(
+    laborSubItems.length > 0 ? new Set([2]) : new Set()
+  );
   const isSingleColo = coloSites.length === 1;
 
   const toggleExpand = (item: number) => {

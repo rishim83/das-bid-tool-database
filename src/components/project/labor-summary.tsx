@@ -3,7 +3,6 @@
 import { useState } from "react";
 import type { TechnologyConfig, TechnologyType, ProjectSpecificDetails } from "@/types";
 import { TECHNOLOGY_LABELS, TECHNOLOGY_BG, TECHNOLOGY_TINT_DARK } from "@/lib/constants";
-import { computeEffectiveLaborHoursPerColo } from "@/lib/calculations";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 const SCOPE_TYPES: TechnologyType[] = ["DAS", "PUBLIC_SAFETY", "ROIP"];
@@ -37,16 +36,7 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
     const tech = technologies.find((t) => t.type === type && t.enabled);
     if (!tech) return { type, totalHours: 0, contingencyHours: 0, billedHours: 0, totalDays: 0, totalWeeks: 0, breakdown: null as null, dynBreakdown: null as null };
 
-    // Use effective labor hours (BOM + dynamic extras) for the total
-    const effectiveHours = computeEffectiveLaborHoursPerColo(tech, psd, guys, hpd);
-    const totalHours = Object.values(effectiveHours).reduce((sum, h) => sum + (h || 0), 0);
-    // Apply labor safety factor to get the billed-equivalent hours
-    const contingencyHours = totalHours * (laborSafety - 1);
-    const billedHours = totalHours * laborSafety;
-    const totalDays = billedHours / hpd / guys;
-    const totalWeeks = totalDays / dpw;
-
-    // Build dynamic breakdown from current settings (same logic as computeEffectiveLaborHoursPerColo)
+    // Build dynamic breakdown first — mirrors computeEffectiveLaborHoursPerColo exactly
     const rawBomHours = Object.values(tech.installLaborHours).reduce((s, h) => s + (h || 0), 0);
     const badgingHours = !!(psd?.badgingSafety) ? guys * 4 : 0;
     const materialHandlingHours = tech.materialHandlingHours ?? 0;
@@ -59,6 +49,14 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
     const stretchHours   = !!(psd?.extras?.stretchAndFlex)  && baseHours > 0 ? baseDays * 0.5 : 0;
     const compositeHours = Number(psd?.extras?.compositeCleanup ?? 0);
     const liftHours      = !!(psd?.extras?.liftSpotters)    && baseHours > 0 ? (0.65 * baseHours) / guys : 0;
+
+    // Total effective hours: sum of all components (consistent with effectiveTechs in use-project.ts)
+    const totalHours = baseHours + shuttleHours + stretchHours + compositeHours + liftHours;
+    // Apply labor safety factor to get the billed-equivalent hours
+    const contingencyHours = totalHours * (laborSafety - 1);
+    const billedHours = totalHours * laborSafety;
+    const totalDays = billedHours / hpd / guys;
+    const totalWeeks = totalDays / dpw;
 
     const dynBreakdown = {
       bom: rawBomHours,
@@ -81,7 +79,7 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
   const anyHours = visibleScopeData.some((s) => (s.billedHours ?? 0) > 0);
   if (!anyHours) return null;
 
-  const hasAnyBreakdown = visibleScopeData.some((s) => s.dynBreakdown !== null && s.dynBreakdown.bom > 0);
+  const hasAnyBreakdown = visibleScopeData.some((s) => s.totalHours > 0);
 
   // Collect all unique additional labor item descriptions across all scopes
   const allAdditionalLabels = Array.from(
