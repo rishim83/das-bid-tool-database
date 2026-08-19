@@ -1025,8 +1025,8 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
                       <NTIReportPreview
                         tech={tech}
                         coloSites={project.coloSites}
-                        materialContingency={project.ntiMaterialContingency ?? 0}
-                        laborContingency={project.ntiLaborContingency ?? 0}
+                        materialContingency={project.ntiMaterialContingency ?? Math.round((project.inputParameters.materialSafety - 1) * 10000) / 100}
+                        laborContingency={project.ntiLaborContingency ?? Math.round((project.inputParameters.laborSafety - 1) * 10000) / 100}
                       />
                     </TabsContent>
                   );

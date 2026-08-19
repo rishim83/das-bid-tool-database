@@ -775,35 +775,52 @@ export function ProjectSidebar({
       )}
 
       {/* ── NTI CONTINGENCY ──────────────────────────── */}
-      {isNTI && (
-        <SidebarSection
-          title="Contingency"
-          icon={<SlidersHorizontal className="h-3.5 w-3.5" />}
-          defaultOpen
-        >
-          <InlineField
-            label="Material"
-            value={project.ntiMaterialContingency ?? 0}
-            onChange={(v) => onUpdateProjectMeta({ ntiMaterialContingency: v })}
-            suffix="%"
-          />
-          <InlineField
-            label="Labor"
-            value={project.ntiLaborContingency ?? 0}
-            onChange={(v) => onUpdateProjectMeta({ ntiLaborContingency: v })}
-            suffix="%"
-          />
-          <label className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-sidebar-accent/50 transition-colors">
-            <input
-              type="checkbox"
-              checked={!!project.ntiLiftAdder}
-              onChange={(e) => onUpdateProjectMeta({ ntiLiftAdder: e.target.checked })}
-              className="h-3.5 w-3.5 rounded border-border/50 accent-primary cursor-pointer shrink-0"
+      {isNTI && (() => {
+        const ncMat = Math.round((ip.materialSafety - 1) * 10000) / 100;
+        const ncLab = Math.round((ip.laborSafety - 1) * 10000) / 100;
+        const ntiMat = project.ntiMaterialContingency ?? ncMat;
+        const ntiLab = project.ntiLaborContingency ?? ncLab;
+        const isModified = Math.abs(ntiMat - ncMat) > 0.001 || Math.abs(ntiLab - ncLab) > 0.001;
+        return (
+          <SidebarSection
+            title="Contingency"
+            icon={<SlidersHorizontal className="h-3.5 w-3.5" />}
+            defaultOpen
+          >
+            <InlineField
+              label="Material"
+              value={ntiMat}
+              onChange={(v) => onUpdateProjectMeta({ ntiMaterialContingency: v })}
+              suffix="%"
             />
-            <span className="text-xs text-foreground/80">Include Lift Adder</span>
-          </label>
-        </SidebarSection>
-      )}
+            <InlineField
+              label="Labor"
+              value={ntiLab}
+              onChange={(v) => onUpdateProjectMeta({ ntiLaborContingency: v })}
+              suffix="%"
+            />
+            {isModified && (
+              <div className="px-3 pb-1.5">
+                <button
+                  onClick={() => onUpdateProjectMeta({ ntiMaterialContingency: ncMat, ntiLaborContingency: ncLab })}
+                  className="text-[10px] text-primary/70 hover:text-primary underline underline-offset-2 transition-colors"
+                >
+                  Reset to NC values ({ncMat}% / {ncLab}%)
+                </button>
+              </div>
+            )}
+            <label className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-sidebar-accent/50 transition-colors">
+              <input
+                type="checkbox"
+                checked={!!project.ntiLiftAdder}
+                onChange={(e) => onUpdateProjectMeta({ ntiLiftAdder: e.target.checked })}
+                className="h-3.5 w-3.5 rounded border-border/50 accent-primary cursor-pointer shrink-0"
+              />
+              <span className="text-xs text-foreground/80">Include Lift Adder</span>
+            </label>
+          </SidebarSection>
+        );
+      })()}
 
 
       {/* ── PER-TECH INPUTS ──────────────────────────── */}
