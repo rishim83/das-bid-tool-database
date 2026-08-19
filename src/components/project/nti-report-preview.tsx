@@ -75,6 +75,12 @@ export function NTIReportPreview({ tech, coloSites, materialContingency, laborCo
   const totalMat = bomRows.reduce((s, r) => s + r.matTotal, 0);
   const totalLab = bomRows.reduce((s, r) => s + r.laborTotal, 0);
 
+  // Pre-contingency totals from raw BOM rows (before matMult/labMult)
+  const rawBomRows = (tech.bomReportRows ?? []).filter((row) => !NC_ONLY_CODES.has(row.code));
+  const totalMatRaw = rawBomRows.reduce((s, row) => s + row.unitEquipPrice * row.qty, 0);
+  const totalLabRaw = rawBomRows.reduce((s, row) => s + row.unitLaborHrs * row.qty, 0);
+  const showPreContingency = (materialContingency > 0 || laborContingency > 0) && (totalMatRaw > 0 || totalLabRaw > 0);
+
   const matLabel  = `Material Unit Cost${materialContingency > 0 ? ` (+${materialContingency}%)` : ""}`;
   const labLabel  = `Labor Unit Hours${laborContingency > 0 ? ` (+${laborContingency}%)` : ""}`;
 
@@ -164,6 +170,21 @@ export function NTIReportPreview({ tech, coloSites, materialContingency, laborCo
             ))}
           </tbody>
           <tfoot>
+            {showPreContingency && (
+              <tr className="border-t border-border/40 bg-secondary/20 text-muted-foreground">
+                <td className="px-3 py-1.5 text-xs" colSpan={2}>Total before contingency</td>
+                <td className="px-2 py-1.5" />
+                <td className="px-2 py-1.5" />
+                <td className="px-2 py-1.5" />
+                <td className="px-3 py-1.5 text-right tabular-nums font-mono text-xs">
+                  {totalMatRaw > 0 ? formatCurrency(totalMatRaw) : "—"}
+                </td>
+                <td className="px-3 py-1.5 text-right tabular-nums font-mono text-xs">
+                  {totalLabRaw > 0 ? totalLabRaw.toFixed(4) : "—"}
+                </td>
+                <td className="px-3 py-1.5" />
+              </tr>
+            )}
             <tr className="border-t-2 border-border/60 bg-secondary/40 font-semibold">
               <td className="px-3 py-2" colSpan={2}>TOTAL</td>
               <td className="px-2 py-2" />
