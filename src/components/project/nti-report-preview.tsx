@@ -94,12 +94,7 @@ export function NTIReportPreview({ tech, coloSites, materialContingency, laborCo
       r.unitLaborHrs > 0  ? r.unitLaborHrs.toFixed(4)   : "",
       r.rfServices > 0    ? r.rfServices.toFixed(2)      : "",
     ]);
-    const totalRow = [
-      "", "TOTAL", "", "", "", "",
-      "", "",
-      totalRF  > 0 ? totalRF.toFixed(2)  : "",
-    ];
-    const tsv = [...dataRows, totalRow]
+    const tsv = dataRows
       .map((row) => row.join("\t"))
       .join("\n");
     navigator.clipboard.writeText(tsv).then(() => {
@@ -174,8 +169,12 @@ export function NTIReportPreview({ tech, coloSites, materialContingency, laborCo
               <td className="px-2 py-2" />
               <td className="px-2 py-2" />
               <td className="px-2 py-2" />
-              <td className="px-3 py-2" />
-              <td className="px-3 py-2" />
+              <td className="px-3 py-2 text-right tabular-nums font-mono">
+                {totalMat > 0 ? formatCurrency(totalMat) : "—"}
+              </td>
+              <td className="px-3 py-2 text-right tabular-nums font-mono">
+                {totalLab > 0 ? totalLab.toFixed(4) : "—"}
+              </td>
               <td className="px-3 py-2 text-right tabular-nums font-mono">
                 {totalRF > 0 ? formatCurrency(totalRF) : "—"}
               </td>
