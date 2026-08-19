@@ -770,12 +770,18 @@ export function ProjectSidebar({
         <SidebarSection
           title="Project Details"
           icon={<Clipboard className="h-3.5 w-3.5" />}
-          summary={[psd.jHooks && "J Hooks"].filter(Boolean).join(" · ") || "None"}
+          summary={[psd.jHooks && "J Hooks", psd.badgingSafety && "Badging"].filter(Boolean).join(" · ") || "None"}
         >
           <CheckboxField
             label="J Hooks for Pathway"
             checked={psd.jHooks}
             onChange={(v) => onUpdateProjectSpecificDetails({ ...psd, jHooks: v })}
+          />
+          <CheckboxField
+            label="Badging / Safety"
+            checked={psd.badgingSafety}
+            onChange={(v) => onUpdateProjectSpecificDetails({ ...psd, badgingSafety: v })}
+            tooltip="Adds 4 hrs per tech (# of Guys × 4 hrs)"
           />
           <CheckboxField
             label="Exclude Materials"
@@ -791,41 +797,28 @@ export function ProjectSidebar({
           title="Extras"
           icon={<Wrench className="h-3.5 w-3.5" />}
           summary={[
-            psd.badgingSafety && "Badging",
             psd.extras?.shuttleServices && "Shuttle",
             psd.extras?.stretchAndFlex && "Stretch",
             psd.extras?.liftSpotters && "Lift",
           ].filter(Boolean).join(" · ") || "None"}
         >
           <CheckboxField
-            label="Badging / Safety"
-            checked={psd.badgingSafety}
-            onChange={(v) => onUpdateProjectSpecificDetails({ ...psd, badgingSafety: v })}
-            tooltip="Adds 4 hrs per tech (# of Guys × 4 hrs)"
-          />
-          <CheckboxField
             label="Shuttle Services"
             checked={!!psd.extras?.shuttleServices}
             onChange={(v) => onUpdateProjectSpecificDetails({ ...psd, extras: { ...psd.extras, shuttleServices: v } })}
-            tooltip="Adds 1 hr per project day (Base Hours ÷ Hours/Day)"
+            tooltip="Adds 1 hr per billed project day (Billed Base Hours ÷ Hours/Day)"
           />
           <CheckboxField
             label="Stretch & Flex"
             checked={!!psd.extras?.stretchAndFlex}
             onChange={(v) => onUpdateProjectSpecificDetails({ ...psd, extras: { ...psd.extras, stretchAndFlex: v } })}
-            tooltip="Adds 0.5 hrs per project day (Base Hours ÷ Hours/Day × 0.5)"
+            tooltip="Adds 0.5 hrs per billed project day (Billed Base Hours ÷ Hours/Day × 0.5)"
           />
           <CheckboxField
             label="Lift Spotters"
             checked={!!psd.extras?.liftSpotters}
             onChange={(v) => onUpdateProjectSpecificDetails({ ...psd, extras: { ...psd.extras, liftSpotters: v } })}
-            tooltip="Adds 65% of Base Hours ÷ # of Guys"
-          />
-          <InlineField
-            label="Composite Cleanup"
-            value={Number(psd.extras?.compositeCleanup ?? 0)}
-            onChange={(v) => onUpdateProjectSpecificDetails({ ...psd, extras: { ...psd.extras, compositeCleanup: v } })}
-            suffix="hrs"
+            tooltip="Adds 65% of Billed Base Hours ÷ # of Guys"
           />
         </SidebarSection>
       )}
@@ -986,9 +979,10 @@ export function ProjectSidebar({
             <div key={type} className="pb-3">
               {/* Upload BOM */}
               <PanelTrigger
-                label="Click here to Upload BOM"
+                label="Upload BOM"
                 summary={getTechInputSummary(tech)}
                 onClick={() => onOpenPanel(`input-values-${type}`)}
+                accent
               />
 
               {/* Inline fields */}
@@ -1011,6 +1005,12 @@ export function ProjectSidebar({
                 label="Commissioning Support"
                 value={tech.commissioningSupport ?? 0}
                 onChange={(v) => update({ commissioningSupport: v })}
+                suffix="hrs"
+              />
+              <InlineField
+                label="Composite Cleanup"
+                value={tech.compositeCleanup ?? 0}
+                onChange={(v) => update({ compositeCleanup: v })}
                 suffix="hrs"
               />
               <InlineField

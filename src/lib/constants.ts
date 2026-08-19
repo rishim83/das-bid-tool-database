@@ -69,6 +69,7 @@ export function createDefaultTechnology(type: TechnologyType): TechnologyConfig 
     pmTrips: {},
     materialHandlingHours: 0,
     commissioningSupport: 0,
+    compositeCleanup: 0,
     additionalLaborItems: [],
     subContractors: [],
     rentalEquipment: DEFAULT_RENTAL_EQUIPMENT,

@@ -524,30 +524,32 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
       const expBadging = !!(expPsd?.badgingSafety) ? expGuys * 4 : 0;
       const expMH      = tech.materialHandlingHours ?? 0;
       const expComm    = tech.commissioningSupport  ?? 0;
+      const expComposite = tech.compositeCleanup ?? 0;
       const expAddlLabor = (tech.additionalLaborItems ?? []).filter((i) => (i.hours || 0) > 0);
       const expAddlHrs   = expAddlLabor.reduce((s, i) => s + (i.hours || 0), 0);
-      const expBase      = expBomHrs + expBadging + expMH + expComm + expAddlHrs;
-      const expBaseDays  = expBase > 0 ? expBase / expHpd : 0;
-      const expBaseWeeks = expBaseDays > 0 ? expBaseDays / expDpw : 0;
-      const expShuttle   = !!(expPsd?.extras?.shuttleServices) && expBase > 0 ? expBaseDays : 0;
-      const expStretch   = !!(expPsd?.extras?.stretchAndFlex)  && expBase > 0 ? expBaseDays * 0.5 : 0;
-      const expComposite = Number(expPsd?.extras?.compositeCleanup ?? 0);
-      const expLift      = !!(expPsd?.extras?.liftSpotters) && expBase > 0 ? (0.65 * expBase) / expGuys : 0;
-      const expEffective = expBase + expShuttle + expStretch + expComposite + expLift;
+      // Composite cleanup is part of base (pre-contingency)
+      const expBase      = expBomHrs + expBadging + expMH + expComm + expComposite + expAddlHrs;
       const expSafety    = ip.laborSafety ?? 1;
-      const expContingency = expEffective * (expSafety - 1);
-      const expBilled    = expEffective * expSafety;
+      const expBilledBase = expBase * expSafety;
+      const expBaseDays  = expBilledBase > 0 ? expBilledBase / expHpd : 0;
+      const expBaseWeeks = expBaseDays > 0 ? expBaseDays / expDpw : 0;
+      const expShuttle   = !!(expPsd?.extras?.shuttleServices) && expBilledBase > 0 ? expBaseDays : 0;
+      const expStretch   = !!(expPsd?.extras?.stretchAndFlex)  && expBilledBase > 0 ? expBaseDays * 0.5 : 0;
+      const expLift      = !!(expPsd?.extras?.liftSpotters) && expBilledBase > 0 ? (0.65 * expBilledBase) / expGuys : 0;
+      const expEffective = expBilledBase + expShuttle + expStretch + expLift;
+      const expContingency = expBase * (expSafety - 1);
+      const expBilled    = expEffective;
       void expBaseWeeks; // used for reference only
 
       const laborItems: [string, number][] = [];
-      if (expBomHrs > 0)  laborItems.push(["BOM Labor Hours (from database)", expBomHrs]);
-      if (expBadging > 0) laborItems.push(["Badging / Safety", expBadging]);
-      if (expMH > 0)      laborItems.push(["Material Handling", expMH]);
-      if (expComm > 0)    laborItems.push(["Commissioning Support", expComm]);
+      if (expBomHrs > 0)    laborItems.push(["BOM Labor Hours (from database)", expBomHrs]);
+      if (expBadging > 0)   laborItems.push(["Badging / Safety", expBadging]);
+      if (expMH > 0)        laborItems.push(["Material Handling", expMH]);
+      if (expComm > 0)      laborItems.push(["Commissioning Support", expComm]);
+      if (expComposite > 0) laborItems.push(["Composite Cleanup", expComposite]);
       expAddlLabor.forEach((it) => { if (it.hours > 0) laborItems.push([it.description || "Additional Labor", it.hours]); });
       if (expShuttle > 0)   laborItems.push(["Shuttle Services", expShuttle]);
       if (expStretch > 0)   laborItems.push(["Stretch & Flex", expStretch]);
-      if (expComposite > 0) laborItems.push(["Composite Cleanup", expComposite]);
       if (expLift > 0)      laborItems.push(["Lift Spotters", expLift]);
       if (expContingency > 0) laborItems.push([`Labor Contingency (×${expSafety.toFixed(2)})`, expContingency]);
       const totalLaborHrs = expBilled;
@@ -1109,9 +1111,9 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
                             const extras = computeLaborExtrasBreakdown(tech, psd, project.schedule.numberOfGuys, project.inputParameters.hoursPerDay ?? 8, ls);
                             return [
                               { label: "Commissioning Support", baseCost: extras.commissioningHours * rate },
+                              { label: "Composite Cleanup",     baseCost: extras.compositeHours * rate },
                               { label: "Shuttle Services",      baseCost: extras.shuttleHours * rate,    postContingency: true },
                               { label: "Stretch & Flex",        baseCost: extras.stretchHours * rate,    postContingency: true },
-                              { label: "Composite Cleanup",     baseCost: extras.compositeHours * rate,  postContingency: true },
                               { label: "Lift Spotters",         baseCost: extras.liftHours * rate,       postContingency: true },
                             ].filter((s) => s.baseCost > 0);
                           })()}

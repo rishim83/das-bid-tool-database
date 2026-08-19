@@ -201,9 +201,9 @@ function QuoteDocument({ project }: { project: Project }) {
       const extras = computeLaborExtrasBreakdown(tech, project.projectSpecificDetails, numGuys, hpd, laborSafety);
       const techLaborSubItems = [
         { label: "Commissioning Support", baseCost: extras.commissioningHours * hourlyRate },
+        { label: "Composite Cleanup",     baseCost: extras.compositeHours * hourlyRate },
         { label: "Shuttle Services",      baseCost: extras.shuttleHours * hourlyRate },
         { label: "Stretch & Flex",        baseCost: extras.stretchHours * hourlyRate },
-        { label: "Composite Cleanup",     baseCost: extras.compositeHours * hourlyRate },
         { label: "Lift Spotters",         baseCost: extras.liftHours * hourlyRate },
       ].filter((s) => s.baseCost > 0);
 
@@ -439,9 +439,9 @@ function QuoteDocument({ project }: { project: Project }) {
                   const ex = computeLaborExtrasBreakdown(tech, project.projectSpecificDetails, numGuys, hpd, ls);
                   return [
                     { label: "Commissioning Support", baseCost: ex.commissioningHours * rate },
+                    { label: "Composite Cleanup",     baseCost: ex.compositeHours * rate },
                     { label: "Shuttle Services",      baseCost: ex.shuttleHours * rate,    postContingency: true },
                     { label: "Stretch & Flex",        baseCost: ex.stretchHours * rate,    postContingency: true },
-                    { label: "Composite Cleanup",     baseCost: ex.compositeHours * rate,  postContingency: true },
                     { label: "Lift Spotters",         baseCost: ex.liftHours * rate,       postContingency: true },
                   ].filter((s) => s.baseCost > 0);
                 })()}

@@ -202,23 +202,21 @@ export function computeLaborExtrasBreakdown(
   const badgingHours = !!(psd?.badgingSafety) ? Math.max(numberOfGuys, 1) * 4 : 0;
   const materialHandlingHours = tech.materialHandlingHours ?? 0;
   const commissioningHours = tech.commissioningSupport ?? 0;
+  const compositeHours = tech.compositeCleanup ?? 0;
   const additionalLaborHours = (tech.additionalLaborItems ?? []).reduce((s, i) => s + (i.hours || 0), 0);
-  const baseHours = totalBomHours + badgingHours + materialHandlingHours + commissioningHours + additionalLaborHours;
+  const baseHours = totalBomHours + badgingHours + materialHandlingHours + commissioningHours + compositeHours + additionalLaborHours;
 
-  // When nothing exists at all, only composite cleanup can still apply
   if (baseHours === 0) {
-    const compositeHours = Number(psd?.extras?.compositeCleanup ?? 0);
-    return { commissioningHours: 0, shuttleHours: 0, stretchHours: 0, compositeHours, liftHours: 0 };
+    return { commissioningHours: 0, shuttleHours: 0, stretchHours: 0, compositeHours: 0, liftHours: 0 };
   }
 
   const hpd = hoursPerDay || 8;
   const guys = Math.max(numberOfGuys, 1);
-  // Extras are computed from billed base hours (after contingency is applied to base)
+  // Shuttle/stretch/lift computed from billed base hours (after contingency)
   const billedBaseHours = baseHours * laborSafety;
   const billedDays = billedBaseHours / hpd;
   const shuttleHours   = !!(psd?.extras?.shuttleServices) && billedBaseHours > 0 ? billedDays : 0;
   const stretchHours   = !!(psd?.extras?.stretchAndFlex)  && billedBaseHours > 0 ? billedDays * 0.5 : 0;
-  const compositeHours = Number(psd?.extras?.compositeCleanup ?? 0);
   const liftHours      = !!(psd?.extras?.liftSpotters)    && billedBaseHours > 0 ? (0.65 * billedBaseHours) / guys : 0;
 
   return { commissioningHours, shuttleHours, stretchHours, compositeHours, liftHours };
@@ -243,12 +241,12 @@ export function computeEffectiveLaborHoursPerColo(
   const badgingHours = !!(psd?.badgingSafety) ? Math.max(numberOfGuys, 1) * 4 : 0;
   const materialHandlingHours = tech.materialHandlingHours ?? 0;
   const commissioningHours = tech.commissioningSupport ?? 0;
+  const compositeCleanup = tech.compositeCleanup ?? 0;
   const additionalLaborHours = (tech.additionalLaborItems ?? []).reduce((s, i) => s + (i.hours || 0), 0);
-  const baseHours = totalBomHours + badgingHours + materialHandlingHours + commissioningHours + additionalLaborHours;
-  const compositeExtra = Number(psd?.extras?.compositeCleanup ?? 0);
+  const baseHours = totalBomHours + badgingHours + materialHandlingHours + commissioningHours + compositeCleanup + additionalLaborHours;
 
   // Nothing to compute at all
-  if (baseHours === 0 && compositeExtra === 0) return rawHoursPerColo;
+  if (baseHours === 0) return rawHoursPerColo;
 
   const hpd = hoursPerDay || 8;
   const baseDays = baseHours > 0 ? baseHours / hpd : 0;
@@ -257,7 +255,7 @@ export function computeEffectiveLaborHoursPerColo(
   const stretchHours   = !!(psd?.extras?.stretchAndFlex)  && baseHours > 0 ? baseDays * 0.5 : 0;
   const liftHours      = !!(psd?.extras?.liftSpotters)    && baseHours > 0 ? (0.65 * baseHours) / guys : 0;
 
-  const totalEffectiveHours = baseHours + shuttleHours + stretchHours + compositeExtra + liftHours;
+  const totalEffectiveHours = baseHours + shuttleHours + stretchHours + liftHours;
 
   // Use BOM keys for distribution, falling back to allColoIds when no BOM entries
   const coloIds = Object.keys(rawHoursPerColo).length > 0 ? Object.keys(rawHoursPerColo) : allColoIds;

@@ -41,11 +41,13 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
     const badgingHours = !!(psd?.badgingSafety) ? guys * 4 : 0;
     const materialHandlingHours = tech.materialHandlingHours ?? 0;
     const commissioningHours = tech.commissioningSupport ?? 0;
+    const compositeHours = tech.compositeCleanup ?? 0;
     const additionalLaborItems = (tech.additionalLaborItems ?? []).filter((i) => (i.hours || 0) > 0);
     const additionalLaborHours = additionalLaborItems.reduce((s, i) => s + (i.hours || 0), 0);
-    const baseHours = rawBomHours + badgingHours + materialHandlingHours + commissioningHours + additionalLaborHours;
+    // Composite cleanup is a pre-contingency base component
+    const baseHours = rawBomHours + badgingHours + materialHandlingHours + commissioningHours + compositeHours + additionalLaborHours;
 
-    // Contingency applied to base hours only
+    // Contingency applied to base hours (including composite)
     const contingencyHours = baseHours * (laborSafety - 1);
     const billedBaseHours = baseHours * laborSafety;
 
@@ -53,11 +55,10 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
     const billedDays = billedBaseHours > 0 ? billedBaseHours / hpd : 0;
     const shuttleHours   = !!(psd?.extras?.shuttleServices) && billedBaseHours > 0 ? billedDays : 0;
     const stretchHours   = !!(psd?.extras?.stretchAndFlex)  && billedBaseHours > 0 ? billedDays * 0.5 : 0;
-    const compositeHours = Number(psd?.extras?.compositeCleanup ?? 0);
     const liftHours      = !!(psd?.extras?.liftSpotters)    && billedBaseHours > 0 ? (0.65 * billedBaseHours) / guys : 0;
 
-    // Total = billed base + post-contingency extras
-    const totalHours = billedBaseHours + shuttleHours + stretchHours + compositeHours + liftHours;
+    // Total = billed base + post-contingency extras (shuttle/stretch/lift)
+    const totalHours = billedBaseHours + shuttleHours + stretchHours + liftHours;
     const billedHours = totalHours;
     const totalDays = billedHours / hpd / guys;
     const totalWeeks = totalDays / dpw;
@@ -67,10 +68,10 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
       badging: badgingHours,
       materialHandling: materialHandlingHours,
       commissioningSupport: commissioningHours,
+      compositeCleanup: compositeHours,
       additionalLaborItems,
       shuttleServices: shuttleHours,
       stretchAndFlex: stretchHours,
-      compositeCleanup: compositeHours,
       liftSpotters: liftHours,
     };
 
@@ -103,6 +104,7 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
     { kind: "row", label: "+ Badging / Safety", getValue: (s) => s.dynBreakdown?.badging ?? 0 },
     { kind: "row", label: "+ Material Handling", getValue: (s) => s.dynBreakdown?.materialHandling ?? 0 },
     { kind: "row", label: "+ Commissioning Support", getValue: (s) => s.dynBreakdown?.commissioningSupport ?? 0 },
+    { kind: "row", label: "+ Composite Cleanup", getValue: (s) => s.dynBreakdown?.compositeCleanup ?? 0 },
     ...allAdditionalLabels.map((desc): BreakdownRow => ({
       kind: "row",
       label: `+ ${desc || "Additional Labor"}`,
@@ -124,7 +126,6 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
     { kind: "divider" as const },
     { kind: "row", label: "+ Shuttle Services", getValue: (s) => s.dynBreakdown?.shuttleServices ?? 0 },
     { kind: "row", label: "+ Stretch & Flex", getValue: (s) => s.dynBreakdown?.stretchAndFlex ?? 0 },
-    { kind: "row", label: "+ Composite Cleanup", getValue: (s) => s.dynBreakdown?.compositeCleanup ?? 0 },
     { kind: "row", label: "+ Lift Spotters", getValue: (s) => s.dynBreakdown?.liftSpotters ?? 0 },
   ];
 
@@ -151,107 +152,164 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
       </div>
       <div className="overflow-x-auto">
         <table className="text-sm w-full">
-          <thead>
-            <tr className="border-b border-border/40 bg-card">
-              <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground min-w-[160px]" />
-              {visibleScopeData.map(({ type }) => (
-                <th key={type} className="px-4 py-2 text-right text-xs font-medium min-w-[120px]">
-                  <div className="flex items-center justify-end">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase ${TECHNOLOGY_BG[type]} ${TECHNOLOGY_TINT_DARK[type]}`}>
-                      {TECHNOLOGY_LABELS[type]}
-                    </span>
-                  </div>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {/* Total Hours row with expand toggle */}
-            <tr className="border-t border-border/25">
-              <td className="px-4 py-2 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1.5">
-                  {hasAnyBreakdown && (
-                    <button
-                      onClick={() => setShowBreakdown((v) => !v)}
-                      className="h-4 w-4 flex items-center justify-center text-muted-foreground/50 hover:text-muted-foreground transition-colors rounded shrink-0"
-                    >
-                      {showBreakdown
-                        ? <ChevronDown className="h-3 w-3" />
-                        : <ChevronRight className="h-3 w-3" />}
-                    </button>
-                  )}
-                  Total Hours
-                </div>
-              </td>
-              {visibleScopeData.map(({ type, billedHours }) => (
-                <td key={type} className="px-4 py-2 text-right font-mono text-xs tabular-nums text-muted-foreground">
-                  {fmt(billedHours ?? 0, 0)}
-                </td>
-              ))}
-            </tr>
+          {/* Pre-compute totals for the rightmost Total column */}
+          {(() => {
+            const grandTotalHours = visibleScopeData.reduce((s, scope) => s + (scope.billedHours ?? 0), 0);
+            const grandTotalDays = grandTotalHours / hpd / guys;
+            const grandTotalWeeks = grandTotalDays / dpw;
+            const showTotal = visibleScopeData.length > 1;
+            const numCols = visibleScopeData.length + 1 + (showTotal ? 1 : 0);
 
-            {/* Expandable breakdown rows */}
-            {showBreakdown && hasAnyBreakdown && cleanedBreakdownRows.map((row, i) => {
-              if (row.kind === "divider") {
-                return (
-                  <tr key={`div-${i}`} className="border-t border-border/15">
-                    <td colSpan={visibleScopeData.length + 1} className="h-px p-0" />
+            return (
+              <>
+                <thead>
+                  <tr className="border-b border-border/40 bg-card">
+                    <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground min-w-[160px]" />
+                    {visibleScopeData.map(({ type }) => (
+                      <th key={type} className="px-4 py-2 text-right text-xs font-medium min-w-[120px]">
+                        <div className="flex items-center justify-end">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase ${TECHNOLOGY_BG[type]} ${TECHNOLOGY_TINT_DARK[type]}`}>
+                            {TECHNOLOGY_LABELS[type]}
+                          </span>
+                        </div>
+                      </th>
+                    ))}
+                    {showTotal && (
+                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground/60 min-w-[100px]">Total</th>
+                    )}
                   </tr>
-                );
-              }
-              if (row.kind === "subtotal") {
-                return (
-                  <tr key={row.label} className="border-t border-border/25 bg-muted/20">
-                    <td className="px-4 py-1.5 pl-10 text-xs font-semibold text-muted-foreground">{row.label}</td>
-                    {visibleScopeData.map((s) => {
-                      const val = s.dynBreakdown ? row.getValue(s) : null;
-                      return (
-                        <td key={s.type} className="px-4 py-1.5 text-right font-mono text-xs tabular-nums font-semibold text-muted-foreground">
-                          {val === null || val === 0 ? "—" : fmt(val, 1)}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              }
-              return (
-                <tr key={row.label} className="border-t border-border/15 bg-muted/10">
-                  <td className="px-4 py-1 pl-10 text-xs text-muted-foreground/70">{row.label}</td>
-                  {visibleScopeData.map((s) => {
-                    const val = s.dynBreakdown ? row.getValue(s) : null;
-                    return (
-                      <td key={s.type} className="px-4 py-1 text-right font-mono text-xs tabular-nums text-muted-foreground/60">
-                        {val === null || val === 0 ? "—" : fmt(val, 1)}
+                </thead>
+                <tbody>
+                  {/* Top-level Total Hours row with expand toggle */}
+                  <tr className="border-t border-border/25">
+                    <td className="px-4 py-2 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1.5">
+                        {hasAnyBreakdown && (
+                          <button
+                            onClick={() => setShowBreakdown((v) => !v)}
+                            className="h-4 w-4 flex items-center justify-center text-muted-foreground/50 hover:text-muted-foreground transition-colors rounded shrink-0"
+                          >
+                            {showBreakdown
+                              ? <ChevronDown className="h-3 w-3" />
+                              : <ChevronRight className="h-3 w-3" />}
+                          </button>
+                        )}
+                        Total Hours
+                      </div>
+                    </td>
+                    {visibleScopeData.map(({ type, billedHours }) => (
+                      <td key={type} className="px-4 py-2 text-right font-mono text-xs tabular-nums text-muted-foreground">
+                        {fmt(billedHours ?? 0, 0)}
                       </td>
+                    ))}
+                    {showTotal && (
+                      <td className="px-4 py-2 text-right font-mono text-xs tabular-nums text-muted-foreground font-semibold">
+                        {fmt(grandTotalHours, 0)}
+                      </td>
+                    )}
+                  </tr>
+
+                  {/* Expandable breakdown rows */}
+                  {showBreakdown && hasAnyBreakdown && cleanedBreakdownRows.map((row, i) => {
+                    if (row.kind === "divider") {
+                      return (
+                        <tr key={`div-${i}`} className="border-t border-border/15">
+                          <td colSpan={numCols} className="h-px p-0" />
+                        </tr>
+                      );
+                    }
+                    const rowTotal = visibleScopeData.reduce((s, scope) => s + (scope.dynBreakdown ? row.getValue(scope) : 0), 0);
+                    if (row.kind === "subtotal") {
+                      return (
+                        <tr key={row.label} className="border-t border-border/25 bg-muted/20">
+                          <td className="px-4 py-1.5 pl-10 text-xs font-semibold text-muted-foreground">{row.label}</td>
+                          {visibleScopeData.map((s) => {
+                            const val = s.dynBreakdown ? row.getValue(s) : null;
+                            return (
+                              <td key={s.type} className="px-4 py-1.5 text-right font-mono text-xs tabular-nums font-semibold text-muted-foreground">
+                                {val === null || val === 0 ? "—" : fmt(val, 1)}
+                              </td>
+                            );
+                          })}
+                          {showTotal && (
+                            <td className="px-4 py-1.5 text-right font-mono text-xs tabular-nums font-semibold text-muted-foreground/70">
+                              {rowTotal === 0 ? "—" : fmt(rowTotal, 1)}
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    }
+                    return (
+                      <tr key={row.label} className="border-t border-border/15 bg-muted/10">
+                        <td className="px-4 py-1 pl-10 text-xs text-muted-foreground/70">{row.label}</td>
+                        {visibleScopeData.map((s) => {
+                          const val = s.dynBreakdown ? row.getValue(s) : null;
+                          return (
+                            <td key={s.type} className="px-4 py-1 text-right font-mono text-xs tabular-nums text-muted-foreground/60">
+                              {val === null || val === 0 ? "—" : fmt(val, 1)}
+                            </td>
+                          );
+                        })}
+                        {showTotal && (
+                          <td className="px-4 py-1 text-right font-mono text-xs tabular-nums text-muted-foreground/50">
+                            {rowTotal === 0 ? "—" : fmt(rowTotal, 1)}
+                          </td>
+                        )}
+                      </tr>
                     );
                   })}
-                </tr>
-              );
-            })}
 
-            <tr className="border-t border-border/25">
-              <td className="px-4 py-2 text-xs text-muted-foreground">
-                Total Days
-                <span className="ml-1 text-muted-foreground/50">({hpd}h/day, {guys} {guys === 1 ? "guy" : "guys"})</span>
-              </td>
-              {visibleScopeData.map(({ type, totalDays }) => (
-                <td key={type} className="px-4 py-2 text-right font-mono text-xs tabular-nums text-muted-foreground">
-                  {fmt(totalDays)}
-                </td>
-              ))}
-            </tr>
-            <tr className="border-t border-border/25 total-row-gradient">
-              <td className="px-4 py-2 text-xs font-semibold">
-                Total Weeks
-                <span className="ml-1 font-normal text-muted-foreground/50">({dpw}d/wk)</span>
-              </td>
-              {visibleScopeData.map(({ type, totalWeeks }) => (
-                <td key={type} className="px-4 py-2 text-right font-mono text-xs tabular-nums font-semibold">
-                  {fmt(totalWeeks)}
-                </td>
-              ))}
-            </tr>
-          </tbody>
+                  {/* Total Hours summary row (above Total Days) */}
+                  <tr className="border-t border-border/25">
+                    <td className="px-4 py-2 text-xs font-semibold text-muted-foreground">Total Hours</td>
+                    {visibleScopeData.map(({ type, billedHours }) => (
+                      <td key={type} className="px-4 py-2 text-right font-mono text-xs tabular-nums font-semibold text-muted-foreground">
+                        {fmt(billedHours ?? 0, 0)}
+                      </td>
+                    ))}
+                    {showTotal && (
+                      <td className="px-4 py-2 text-right font-mono text-xs tabular-nums font-semibold text-muted-foreground">
+                        {fmt(grandTotalHours, 0)}
+                      </td>
+                    )}
+                  </tr>
+
+                  <tr className="border-t border-border/25">
+                    <td className="px-4 py-2 text-xs text-muted-foreground">
+                      Total Days
+                      <span className="ml-1 text-muted-foreground/50">({hpd}h/day, {guys} {guys === 1 ? "guy" : "guys"})</span>
+                    </td>
+                    {visibleScopeData.map(({ type, totalDays }) => (
+                      <td key={type} className="px-4 py-2 text-right font-mono text-xs tabular-nums text-muted-foreground">
+                        {fmt(totalDays)}
+                      </td>
+                    ))}
+                    {showTotal && (
+                      <td className="px-4 py-2 text-right font-mono text-xs tabular-nums text-muted-foreground">
+                        {fmt(grandTotalDays)}
+                      </td>
+                    )}
+                  </tr>
+                  <tr className="border-t border-border/25 total-row-gradient">
+                    <td className="px-4 py-2 text-xs font-semibold">
+                      Total Weeks
+                      <span className="ml-1 font-normal text-muted-foreground/50">({dpw}d/wk)</span>
+                    </td>
+                    {visibleScopeData.map(({ type, totalWeeks }) => (
+                      <td key={type} className="px-4 py-2 text-right font-mono text-xs tabular-nums font-semibold">
+                        {fmt(totalWeeks)}
+                      </td>
+                    ))}
+                    {showTotal && (
+                      <td className="px-4 py-2 text-right font-mono text-xs tabular-nums font-semibold">
+                        {fmt(grandTotalWeeks)}
+                      </td>
+                    )}
+                  </tr>
+                </tbody>
+              </>
+            );
+          })()}
         </table>
       </div>
     </div>

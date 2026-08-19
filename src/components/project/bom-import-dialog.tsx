@@ -314,7 +314,7 @@ export function BomImportDialog({
 
   const shuttleHours = !!(projectSpecificDetails?.extras?.shuttleServices) && baseHours > 0 ? baseDays : 0;
   const stretchHours = !!(projectSpecificDetails?.extras?.stretchAndFlex) && baseHours > 0 ? baseDays * 0.5 : 0;
-  const compositeHours = Number(projectSpecificDetails?.extras?.compositeCleanup ?? 0);
+  const compositeHours = tech.compositeCleanup ?? 0;
   const liftHours = !!(projectSpecificDetails?.extras?.liftSpotters) && baseHours > 0 ? (0.65 * baseHours) / guys : 0;
 
   // Final total (baked into installLaborHours on Apply)

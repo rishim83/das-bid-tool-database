@@ -134,6 +134,7 @@ export interface TechnologyConfig {
   // Per-technology project details
   materialHandlingHours: number;
   commissioningSupport: number;
+  compositeCleanup: number;
   additionalLaborItems: AdditionalLaborItem[];
   subContractors: SubContractor[];
   rentalEquipment: RentalEquipment;
