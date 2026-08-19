@@ -1061,41 +1061,44 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
 
               {/* Quotes — all enabled technologies shown together */}
               <div className="p-5 space-y-5">
-                {(["DAS", "PUBLIC_SAFETY", "ROIP"] as TechnologyType[]).map((type) => {
-                  const tech = project.technologies.find((t) => t.type === type);
-                  const quote = quotes.find((q) => q.type === type);
-                  if (!tech?.enabled || !quote) return null;
-                  const techRentalMarkup = getTechRentalMarkup(tech);
-                  const techSubMarkup = getTechSubMarkup(tech);
-                  return (
-                    <QuoteTable
-                      key={type}
-                      quote={quote}
-                      coloSites={project.coloSites}
-                      rentalMarkupCost={techRentalMarkup}
-                      adminPercent={adminPercent}
-                      subContractorTotal={techSubMarkup}
-                      taxPercent={taxPercent}
-                      installTravelActive={installTravelCalc !== null}
-                      materialSafety={project.inputParameters.materialSafety ?? 1}
-                      laborSafety={project.inputParameters.laborSafety ?? 1}
-                      equipMarkUp={project.inputParameters.markUp ?? 1}
-                      additionalMaterials={(tech.additionalMaterials ?? []).filter((m) => m.value > 0)}
-                      laborSubItems={(() => {
-                        const rate = project.inputParameters.hourlyRate ?? 0;
-                        const ls = project.inputParameters.laborSafety ?? 1;
-                        const extras = computeLaborExtrasBreakdown(tech, psd, project.schedule.numberOfGuys, project.inputParameters.hoursPerDay ?? 8, ls);
-                        return [
-                          { label: "Commissioning Support", baseCost: extras.commissioningHours * rate },
-                          { label: "Composite Cleanup",     baseCost: extras.compositeHours * rate },
-                          { label: "Shuttle Services",      baseCost: extras.shuttleHours * rate,    postContingency: true },
-                          { label: "Stretch & Flex",        baseCost: extras.stretchHours * rate,    postContingency: true },
-                          { label: "Lift Spotters",         baseCost: extras.liftHours * rate,       postContingency: true },
-                        ].filter((s) => s.baseCost > 0);
-                      })()}
-                    />
-                  );
-                })}
+                <div className="flex gap-5">
+                  {(["DAS", "PUBLIC_SAFETY", "ROIP"] as TechnologyType[]).map((type) => {
+                    const tech = project.technologies.find((t) => t.type === type);
+                    const quote = quotes.find((q) => q.type === type);
+                    if (!tech?.enabled || !quote) return null;
+                    const techRentalMarkup = getTechRentalMarkup(tech);
+                    const techSubMarkup = getTechSubMarkup(tech);
+                    return (
+                      <div key={type} className="flex-1 min-w-0">
+                        <QuoteTable
+                          quote={quote}
+                          coloSites={project.coloSites}
+                          rentalMarkupCost={techRentalMarkup}
+                          adminPercent={adminPercent}
+                          subContractorTotal={techSubMarkup}
+                          taxPercent={taxPercent}
+                          installTravelActive={installTravelCalc !== null}
+                          materialSafety={project.inputParameters.materialSafety ?? 1}
+                          laborSafety={project.inputParameters.laborSafety ?? 1}
+                          equipMarkUp={project.inputParameters.markUp ?? 1}
+                          additionalMaterials={(tech.additionalMaterials ?? []).filter((m) => m.value > 0)}
+                          laborSubItems={(() => {
+                            const rate = project.inputParameters.hourlyRate ?? 0;
+                            const ls = project.inputParameters.laborSafety ?? 1;
+                            const extras = computeLaborExtrasBreakdown(tech, psd, project.schedule.numberOfGuys, project.inputParameters.hoursPerDay ?? 8, ls);
+                            return [
+                              { label: "Commissioning Support", baseCost: extras.commissioningHours * rate },
+                              { label: "Composite Cleanup",     baseCost: extras.compositeHours * rate },
+                              { label: "Shuttle Services",      baseCost: extras.shuttleHours * rate,    postContingency: true },
+                              { label: "Stretch & Flex",        baseCost: extras.stretchHours * rate,    postContingency: true },
+                              { label: "Lift Spotters",         baseCost: extras.liftHours * rate,       postContingency: true },
+                            ].filter((s) => s.baseCost > 0);
+                          })()}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
 
                 {/* Output summaries */}
                 <div className="flex flex-wrap gap-4">
