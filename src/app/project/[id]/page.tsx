@@ -72,7 +72,22 @@ function migrateProject(p: Project): Project {
       }
     }
 
-    return base;
+    // Collapse any per-colo records to a single "total" key
+    const collapseToTotal = (rec: Record<string, number>): Record<string, number> => {
+      if ("total" in rec) return rec;
+      const sum = Object.values(rec).reduce((s: number, v) => s + (v || 0), 0);
+      return { total: sum };
+    };
+    return {
+      ...base,
+      installLaborHours: collapseToTotal(base.installLaborHours),
+      equipmentCost: collapseToTotal(base.equipmentCost),
+      pmTrips: collapseToTotal(base.pmTrips),
+      rfLineItems: base.rfLineItems.map((item) => ({
+        ...item,
+        values: collapseToTotal(item.values),
+      })),
+    };
   });
   return { ...p, inputParameters, technologies };
 }
@@ -114,7 +129,6 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
     updateSchedule,
     updatePMTravel,
     updateInstallTravel,
-    updateColoSites,
     updateTechnology,
     updateProjectMeta,
     updateProjectSpecificDetails,
@@ -900,7 +914,6 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
     onUpdateSchedule: updateSchedule,
     onUpdatePMTravel: updatePMTravel,
     onUpdateInstallTravel: updateInstallTravel,
-    onUpdateColoSites: updateColoSites,
     onUpdateTechnology: updateTechnology,
     onUpdateProjectMeta: updateProjectMeta,
     onUpdateProjectSpecificDetails: updateProjectSpecificDetails,
@@ -918,7 +931,6 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
     onUpdateSchedule: updateSchedule,
     onUpdatePMTravel: updatePMTravel,
     onUpdateInstallTravel: updateInstallTravel,
-    onUpdateColoSites: updateColoSites,
     onUpdateTechnology: updateTechnology,
     onUpdateProjectSpecificDetails: updateProjectSpecificDetails,
     onClose: () => setActivePanel(null),

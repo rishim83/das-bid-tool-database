@@ -320,7 +320,7 @@ export const DEFAULT_PM_TRAVEL: PMTravelEstimate = {
 };
 
 export const DEFAULT_COLO_SITES: ColoSite[] = [
-  { id: "colo1", name: "Cost" },
+  { id: "total", name: "" },
 ];
 
 // ─── Parts Database ──────────────────────────────────────────────

@@ -33,16 +33,33 @@ function migrateProject(p: Project): Project {
   const legacyPsd = p.projectSpecificDetails as any;
   const inputParameters = { ...DEFAULT_INPUT_PARAMETERS, ...p.inputParameters };
   const legacyWaterAndIce: number = legacyPsd?.extras?.waterAndIce ?? 0;
-  const technologies = p.technologies.map((tech: TechnologyConfig, idx: number) => ({
-    ...tech,
-    materialHandlingHours: tech.materialHandlingHours ?? (legacyPsd?.materialHandlingHours ?? 0),
-    commissioningSupport: tech.commissioningSupport ?? (legacyPsd?.commissioningSupport ?? 0),
-    additionalLaborItems: tech.additionalLaborItems ?? (legacyPsd?.additionalLaborItems ?? []),
-    subContractors: tech.subContractors ?? (idx === 0 ? (p.subContractors ?? []) : []),
-    rentalEquipment: tech.rentalEquipment ?? (idx === 0 ? (p.rentalEquipment ?? DEFAULT_RENTAL_EQUIPMENT) : DEFAULT_RENTAL_EQUIPMENT),
-    waterAndIce: tech.waterAndIce ?? (idx === 0 ? legacyWaterAndIce : 0),
-    additionalMaterials: tech.additionalMaterials ?? [],
-  }));
+  const collapseToTotal = (rec: Record<string, number>): Record<string, number> => {
+    if ("total" in rec) return rec;
+    const sum = Object.values(rec).reduce((s: number, v) => s + (v || 0), 0);
+    return { total: sum };
+  };
+  const technologies = p.technologies.map((tech: TechnologyConfig, idx: number) => {
+    const base = {
+      ...tech,
+      materialHandlingHours: tech.materialHandlingHours ?? (legacyPsd?.materialHandlingHours ?? 0),
+      commissioningSupport: tech.commissioningSupport ?? (legacyPsd?.commissioningSupport ?? 0),
+      additionalLaborItems: tech.additionalLaborItems ?? (legacyPsd?.additionalLaborItems ?? []),
+      subContractors: tech.subContractors ?? (idx === 0 ? (p.subContractors ?? []) : []),
+      rentalEquipment: tech.rentalEquipment ?? (idx === 0 ? (p.rentalEquipment ?? DEFAULT_RENTAL_EQUIPMENT) : DEFAULT_RENTAL_EQUIPMENT),
+      waterAndIce: tech.waterAndIce ?? (idx === 0 ? legacyWaterAndIce : 0),
+      additionalMaterials: tech.additionalMaterials ?? [],
+    };
+    return {
+      ...base,
+      installLaborHours: collapseToTotal(base.installLaborHours),
+      equipmentCost: collapseToTotal(base.equipmentCost),
+      pmTrips: collapseToTotal(base.pmTrips),
+      rfLineItems: base.rfLineItems.map((item) => ({
+        ...item,
+        values: collapseToTotal(item.values),
+      })),
+    };
+  });
   return { ...p, inputParameters, technologies };
 }
 
@@ -58,14 +75,13 @@ function QuoteDocument({ project }: { project: Project }) {
 
   // Effective techs: same as useProject — installLaborHours and equipmentCost include dynamic extras
   const effectiveTechs = useMemo(() => {
-    const coloIds = project.coloSites.map((c) => c.id);
     return project.technologies.map((tech) => {
       if (!tech.enabled) return tech;
-      const effectiveHours = computeEffectiveLaborHoursPerColo(tech, techPsd, numGuys, hpd);
-      const effectiveEquipment = computeEffectiveEquipmentCostPerColo(tech, coloIds);
+      const effectiveHours = computeEffectiveLaborHoursPerColo(tech, techPsd, numGuys, hpd, ["total"]);
+      const effectiveEquipment = computeEffectiveEquipmentCostPerColo(tech, ["total"]);
       return { ...tech, installLaborHours: effectiveHours, equipmentCost: effectiveEquipment };
     });
-  }, [project.technologies, project.coloSites, techPsd, numGuys, hpd]);
+  }, [project.technologies, techPsd, numGuys, hpd]);
 
   // Total install labor hours across all enabled techs (matches LaborSummary) — scaled by laborSafety
   const totalAllLaborHours = useMemo(() => {
@@ -118,7 +134,7 @@ function QuoteDocument({ project }: { project: Project }) {
         }
         return calculateTechnologyQuote(
           tech,
-          project.coloSites,
+          [{ id: "total", name: "" }],
           project.inputParameters,
           pmTravelCalculated.totalPerTrip,
           numGuys,
@@ -126,7 +142,7 @@ function QuoteDocument({ project }: { project: Project }) {
           installTravelOverride
         );
       });
-  }, [effectiveTechs, project.coloSites, project.inputParameters, pmTravelCalculated, numGuys, installTravelCalc, project.installTravel, hpd]);
+  }, [effectiveTechs, project.inputParameters, pmTravelCalculated, numGuys, installTravelCalc, project.installTravel, hpd]);
 
   // Per-tech helpers
   const travelMarkupMultiplier = project.inputParameters.travelIndirectMarkup ?? 1.23;

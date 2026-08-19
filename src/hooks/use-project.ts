@@ -8,7 +8,6 @@ import type {
   PMTravelEstimate,
   InstallTravelConfig,
   InstallTravelCalculated,
-  ColoSite,
   TechnologyConfig,
   TechnologyQuote,
   PMTravelCalculated,
@@ -58,14 +57,13 @@ export function useProject(initialProject: Project) {
   // Effective techs: installLaborHours replaced with dynamically-computed totals
   // (raw BOM hours + current extras from project settings). NC only — NTI is unchanged.
   const effectiveTechs = useMemo(() => {
-    const coloIds = project.coloSites.map((c) => c.id);
     return project.technologies.map((tech) => {
       if (!tech.enabled) return tech;
-      const effectiveHours = computeEffectiveLaborHoursPerColo(tech, psd, numGuys, hpd, coloIds);
-      const effectiveEquipment = computeEffectiveEquipmentCostPerColo(tech, coloIds);
+      const effectiveHours = computeEffectiveLaborHoursPerColo(tech, psd, numGuys, hpd, ["total"]);
+      const effectiveEquipment = computeEffectiveEquipmentCostPerColo(tech, ["total"]);
       return { ...tech, installLaborHours: effectiveHours, equipmentCost: effectiveEquipment };
     });
-  }, [project.technologies, project.coloSites, psd, numGuys, hpd]);
+  }, [project.technologies, psd, numGuys, hpd]);
 
   // Calculate schedule
   const scheduleCalculated = useMemo(
@@ -134,7 +132,7 @@ export function useProject(initialProject: Project) {
         }
         return calculateTechnologyQuote(
           tech,
-          project.coloSites,
+          [{ id: "total", name: "" }],
           project.inputParameters,
           pmTravelCalculated.totalPerTrip,
           numGuys,
@@ -142,7 +140,7 @@ export function useProject(initialProject: Project) {
           installTravelOverride
         );
       });
-  }, [effectiveTechs, project.coloSites, project.inputParameters, pmTravelCalculated, numGuys, installTravelCalc, project.installTravel, hpd]);
+  }, [effectiveTechs, project.inputParameters, pmTravelCalculated, numGuys, installTravelCalc, project.installTravel, hpd]);
 
   // Update functions
   const updateInputParameters = useCallback((params: InputParameters) => {
@@ -159,10 +157,6 @@ export function useProject(initialProject: Project) {
 
   const updateInstallTravel = useCallback((config: InstallTravelConfig) => {
     setProject((p) => ({ ...p, installTravel: config }));
-  }, []);
-
-  const updateColoSites = useCallback((sites: ColoSite[]) => {
-    setProject((p) => ({ ...p, coloSites: sites }));
   }, []);
 
   const updateTechnology = useCallback((tech: TechnologyConfig) => {
@@ -189,14 +183,12 @@ export function useProject(initialProject: Project) {
     (updates: {
       name?: string;
       client?: string;
-      coloSites?: ColoSite[];
       technologies?: TechnologyConfig[];
     }) => {
       setProject((p) => ({
         ...p,
         ...(updates.name !== undefined && { name: updates.name }),
         ...(updates.client !== undefined && { client: updates.client }),
-        ...(updates.coloSites && { coloSites: updates.coloSites }),
         ...(updates.technologies && { technologies: updates.technologies }),
       }));
     },
@@ -214,7 +206,6 @@ export function useProject(initialProject: Project) {
     updateSchedule,
     updatePMTravel,
     updateInstallTravel,
-    updateColoSites,
     updateTechnology,
     updateProjectMeta,
     updateProjectSpecificDetails,

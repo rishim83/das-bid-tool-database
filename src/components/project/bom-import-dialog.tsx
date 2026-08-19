@@ -5,10 +5,8 @@ import * as XLSX from "xlsx";
 import Link from "next/link";
 import type {
   TechnologyConfig,
-  ColoSite,
   UnmatchedBOMItem,
   BOMAnalysisResult,
-  ColoDistribution,
   PartsDatabase,
   ProjectSpecificDetails,
   LaborHoursBreakdown,
@@ -43,7 +41,6 @@ import { toast } from "sonner";
 
 interface Props {
   tech: TechnologyConfig;
-  coloSites: ColoSite[];
   onApply: (updatedTech: TechnologyConfig) => void;
   projectSpecificDetails?: ProjectSpecificDetails;
   numberOfGuys?: number;
@@ -57,7 +54,6 @@ interface Props {
 
 export function BomImportDialog({
   tech,
-  coloSites,
   onApply,
   projectSpecificDetails,
   numberOfGuys = 1,
@@ -74,7 +70,6 @@ export function BomImportDialog({
   const [db, setDb] = useState<PartsDatabase | null>(null);
   const [analysis, setAnalysis] = useState<BOMAnalysisResult | null>(null);
   const [unmatched, setUnmatched] = useState<UnmatchedBOMItem[]>([]);
-  const [distribution, setDistribution] = useState<ColoDistribution[]>([]);
   const [showBreakdown, setShowBreakdown] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -123,7 +118,6 @@ export function BomImportDialog({
   const reset = () => {
     setAnalysis(null);
     setUnmatched([]);
-    setDistribution([]);
     setStatusMsg("");
     setPriceOverrides({});
     setLaborOverrides({});
@@ -184,10 +178,6 @@ export function BomImportDialog({
       const result = analyzeBOM(bomItems, db, includeLift, projectSpecificDetails?.jHooks ?? true);
       setAnalysis(result);
       setUnmatched(result.unmatched.map((u) => ({ ...u })));
-      // Default: 100% to first COLO
-      setDistribution(
-        coloSites.map((c, i) => ({ coloId: c.id, percentage: i === 0 ? 100 : 0 }))
-      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to parse BOM");
     } finally {
@@ -233,17 +223,9 @@ export function BomImportDialog({
     });
   };
 
-  const updateDistribution = (coloId: string, percentage: number) => {
-    setDistribution((prev) =>
-      prev.map((d) => (d.coloId === coloId ? { ...d, percentage } : d))
-    );
-  };
-
   // Derived state
   const unresolvedCount = unmatched.filter((u) => !u.isResolved).length;
   const allResolved = unresolvedCount === 0;
-  const distSum = distribution.reduce((s, d) => s + (d.percentage || 0), 0);
-  const distValid = Math.abs(distSum - 100) < 0.01;
 
   // Price of $0 in the database is treated as $0 — never prompt for a price override.
   const needsPriceItems = (analysis?.matched ?? []).filter((_m) => false as boolean);
@@ -263,8 +245,7 @@ export function BomImportDialog({
     analysis !== null &&
     allResolved &&
     unresolvedPriceCount === 0 &&
-    unresolvedLaborCount === 0 &&
-    distValid;
+    unresolvedLaborCount === 0;
 
   // Running totals (matched + price/labor overrides + resolved unmatched)
   const resolvedUnmatched = unmatched.filter((u) => u.isResolved);
@@ -323,11 +304,7 @@ export function BomImportDialog({
   const handleApply = () => {
     if (!analysis || !canApply) return;
 
-    const installLaborHours: Record<string, number> = { ...tech.installLaborHours };
-    const equipmentCost: Record<string, number> = { ...tech.equipmentCost };
-
     const waterAndIceRaw = tech.waterAndIce ?? 0;
-    const addlMaterialsRaw = (tech.additionalMaterials ?? []).reduce((s, m) => s + (m.value || 0), 0);
     // matMult defined at component level; labMult only needed here
     const labMult = 1 + laborContingency / 100;
     // NTI: BOM equipment × material contingency
@@ -339,13 +316,9 @@ export function BomImportDialog({
     // NTI: raw BOM hours × labor contingency
     // NC:  raw BOM hours only — extras are added dynamically at quote-calculation time
     const hoursToStore = ntiMode ? bomHours * labMult : bomHours;
-    // Use equipCostToStore for the toast so the user sees exactly what was stored in Input Values
 
-    for (const d of distribution) {
-      const pct = d.percentage / 100;
-      installLaborHours[d.coloId] = Math.round(hoursToStore * pct * 100) / 100;
-      equipmentCost[d.coloId] = Math.round(equipCostToStore * pct * 100) / 100;
-    }
+    const installLaborHours: Record<string, number> = { total: Math.round(hoursToStore * 100) / 100 };
+    const equipmentCost: Record<string, number> = { total: Math.round(equipCostToStore * 100) / 100 };
 
     const laborHoursBreakdown: LaborHoursBreakdown = {
       bom: bomHours,
@@ -455,13 +428,10 @@ export function BomImportDialog({
       "Labor Code Description",
     ];
 
-    // RF Services rows — one row per line item, value = sum across all colos
+    // RF Services rows — one row per line item
     const rfRows = tech.rfLineItems
-      .filter((item) => coloSites.some((c) => (item.values[c.id] || 0) > 0))
-      .map((item) => {
-        const rfTotal = coloSites.reduce((s, c) => s + (item.values[c.id] || 0), 0);
-        return ["RF", item.description || "RF Engineering", "", 1, "", "", 0, 0, rfTotal, 0, 0, ""];
-      });
+      .filter((item) => (item.values["total"] || 0) > 0)
+      .map((item) => ["RF", item.description || "RF Engineering", "", 1, "", "", 0, 0, item.values["total"] || 0, 0, 0, ""]);
 
     const dataRows = [
       // RF Services section first
@@ -989,52 +959,6 @@ export function BomImportDialog({
                 </div>
               )}
 
-              {/* COLO Distribution — only shown once all unmatched are resolved */}
-              {allResolved && (
-                <div>
-                  <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                    COLO Distribution
-                  </h3>
-                  <div className="border border-border/60 rounded-lg px-4 py-3 space-y-2.5 bg-card/50">
-                    {distribution.map((d) => {
-                      const site = coloSites.find((c) => c.id === d.coloId);
-                      const labHrs = totalHours * (d.percentage / 100);
-                      const equip = equipCostPreview * (d.percentage / 100);
-                      return (
-                        <div key={d.coloId} className="flex items-center gap-3">
-                          <span className="text-xs text-muted-foreground w-32 shrink-0">
-                            {site?.name}
-                          </span>
-                          <Input
-                            type="number"
-                            min={0}
-                            max={100}
-                            step="1"
-                            value={d.percentage}
-                            onChange={(e) =>
-                              updateDistribution(d.coloId, parseFloat(e.target.value) || 0)
-                            }
-                            className="h-7 w-20 text-xs text-right"
-                          />
-                          <span className="text-xs text-muted-foreground">%</span>
-                          <span className="text-xs text-muted-foreground ml-auto font-mono tabular-nums">
-                            {formatCurrency(equip)} · {labHrs.toFixed(1)} hrs
-                          </span>
-                        </div>
-                      );
-                    })}
-                    <div
-                      className={`text-xs pt-1.5 border-t border-border/40 flex justify-between font-medium ${distValid ? "text-emerald-400" : "text-destructive"}`}
-                    >
-                      <span>Total</span>
-                      <span className="font-mono">
-                        {distSum.toFixed(1)}%{distValid ? " ✓" : " — must equal 100%"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {/* Actions */}
               <div className="flex gap-2 pt-1">
                 <Button
@@ -1049,8 +973,6 @@ export function BomImportDialog({
                     ? `Enter labor hrs for ${unresolvedLaborCount} item${unresolvedLaborCount > 1 ? "s" : ""} to continue`
                     : unresolvedCount > 0
                     ? `Resolve ${unresolvedCount} item${unresolvedCount > 1 ? "s" : ""} to continue`
-                    : !distValid
-                    ? `Distribution must equal 100% (${distSum.toFixed(0)}%)`
                     : "Apply to Project"}
                 </Button>
                 <Button

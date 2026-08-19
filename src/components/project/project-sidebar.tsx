@@ -7,7 +7,6 @@ import type {
   TechnologyConfig,
   TechnologyType,
   ProjectSpecificDetails,
-  ColoSite,
   InputParameters,
   Schedule,
   PMTravelEstimate,
@@ -34,7 +33,6 @@ import {
   ChevronRight,
   ChevronLeft,
   ChevronsUpDown,
-  MapPin,
   DollarSign,
   Clock,
   Plane,
@@ -46,18 +44,15 @@ import {
   SlidersHorizontal,
   Plus,
   Trash2,
-  CopyCheck,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ParametersPanel } from "./parameters-panel";
-import { ColoManager } from "./colo-manager";
 import { InputValuesTable } from "./input-values-table";
 import { BomImportDialog } from "./bom-import-dialog";
 import { PerTechDetailsCard } from "./per-tech-details-card";
 
 // ─── Panel ID type ───────────────────────────────────────────────
 export type SidebarPanelId =
-  | "colos"
   | "parameters"
   | `input-values-${TechnologyType}`
   | `tech-details-${TechnologyType}`
@@ -326,7 +321,6 @@ interface Props {
   onUpdateInstallTravel: (t: InstallTravelConfig) => void;
   onUpdateTechnology: (t: TechnologyConfig) => void;
   onUpdateProjectMeta: (patch: Partial<Project>) => void;
-  onUpdateColoSites: (sites: ColoSite[]) => void;
   onUpdateProjectSpecificDetails: (psd: ProjectSpecificDetails) => void;
   onTabChange: (tab: TechnologyType) => void;
   onOpenPanel: (id: SidebarPanelId) => void;
@@ -346,7 +340,6 @@ export function ProjectSidebar({
   onUpdateSchedule,
   onUpdatePMTravel,
   onUpdateInstallTravel,
-  onUpdateColoSites,
   onUpdateTechnology,
   onUpdateProjectMeta,
   onUpdateProjectSpecificDetails,
@@ -354,16 +347,9 @@ export function ProjectSidebar({
   onOpenPanel,
 }: Props) {
   const ip = project.inputParameters;
-  const colos = project.coloSites;
   const [travelTechView, setTravelTechView] = useState<"ALL" | TechnologyType>("ALL");
 
   // ── Summary helpers ─────────────────────────────────────────
-  const coloSummary = colos.length === 0
-    ? "No sites"
-    : colos.length === 1
-    ? colos[0].name
-    : `${colos.length} sites`;
-
   const paramSummary = `${ip.markUp ?? 1}× markup · $${ip.hourlyRate ?? 0}/hr`;
 
   const getTechInputSummary = (tech: TechnologyConfig) => {
@@ -391,41 +377,6 @@ export function ProjectSidebar({
 
   return (
     <div className="flex flex-col h-full">
-      {/* ── SITE SETUP ───────────────────────────────── */}
-      <SidebarSection
-        title="Site Setup"
-        icon={<MapPin className="h-3.5 w-3.5" />}
-        summary={coloSummary}
-        defaultOpen={colos.length === 0}
-      >
-        <div className="px-3 pt-1 pb-2 flex flex-col gap-1.5">
-          {colos.map((site) => (
-            <div key={site.id} className="flex items-center gap-1">
-              <Input
-                value={site.name}
-                onChange={(e) => onUpdateColoSites(colos.map((s) => s.id === site.id ? { ...s, name: e.target.value } : s))}
-                className="h-7 flex-1 text-xs bg-input/40 border-border/50 rounded-md"
-              />
-              {colos.length > 1 && (
-                <button
-                  onClick={() => onUpdateColoSites(colos.filter((s) => s.id !== site.id))}
-                  className="h-5 w-5 flex items-center justify-center text-muted-foreground/40 hover:text-destructive transition-colors shrink-0"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </div>
-          ))}
-          <Button
-            variant="ghost" size="sm"
-            onClick={() => onUpdateColoSites([...colos, { id: uuid(), name: `COLO ${colos.length}` }])}
-            className="h-6 text-xs text-muted-foreground border border-dashed border-border/50 hover:border-primary/40 hover:text-primary transition-colors w-full"
-          >
-            <Plus className="h-3 w-3 mr-1" /> Add COLO
-          </Button>
-        </div>
-      </SidebarSection>
-
       {/* ── MARK UPS (NC only) ───────────────────────── */}
       {!isNTI && (
         <SidebarSection
@@ -947,17 +898,6 @@ export function ProjectSidebar({
             update({ subContractors: subs.filter((s) => s.id !== id) });
 
           const rfItems = tech.rfLineItems ?? [];
-          const addRFItem = () =>
-            update({ rfLineItems: [...rfItems, { id: uuid(), description: "New Item", values: {} }] });
-          const updateRFItem = (id: string, field: string, val: string | number, coloId?: string) => {
-            if (field === "description") {
-              update({ rfLineItems: rfItems.map((i) => i.id === id ? { ...i, description: String(val) } : i) });
-            } else if (coloId) {
-              update({ rfLineItems: rfItems.map((i) => i.id === id ? { ...i, values: { ...i.values, [coloId]: Number(val) } } : i) });
-            }
-          };
-          const removeRFItem = (id: string) =>
-            update({ rfLineItems: rfItems.filter((i) => i.id !== id) });
           const rfTotal = rfItems.reduce((s, i) => s + Object.values(i.values).reduce((vs, v) => vs + (v || 0), 0), 0);
 
           const updateLift = (field: string, val: number | boolean) =>
@@ -986,15 +926,14 @@ export function ProjectSidebar({
               />
 
               {/* Inline fields */}
-              {!isNTI && project.coloSites.map((colo) => (
+              {!isNTI && (
                 <InlineField
-                  key={colo.id}
-                  label={project.coloSites.length > 1 ? `PM Trips (${colo.name})` : "PM Trips"}
-                  value={tech.pmTrips[colo.id] ?? 0}
-                  onChange={(v) => update({ pmTrips: { ...tech.pmTrips, [colo.id]: v } })}
+                  label="PM Trips"
+                  value={tech.pmTrips["total"] ?? 0}
+                  onChange={(v) => update({ pmTrips: { total: v } })}
                   step="1"
                 />
-              ))}
+              )}
               <InlineField
                 label="Material Handling"
                 value={tech.materialHandlingHours ?? 0}
@@ -1206,7 +1145,6 @@ interface OverlayProps {
   onUpdateSchedule: (s: Schedule) => void;
   onUpdatePMTravel: (t: PMTravelEstimate) => void;
   onUpdateInstallTravel: (t: InstallTravelConfig) => void;
-  onUpdateColoSites: (sites: ColoSite[]) => void;
   onUpdateTechnology: (t: TechnologyConfig) => void;
   onUpdateProjectSpecificDetails: (psd: ProjectSpecificDetails) => void;
   onClose: () => void;
@@ -1224,20 +1162,18 @@ export function SidebarOverlayPanel({
   onUpdateSchedule,
   onUpdatePMTravel,
   onUpdateInstallTravel,
-  onUpdateColoSites,
   onUpdateTechnology,
   onUpdateProjectSpecificDetails,
   onClose,
   sidebarWidth,
 }: OverlayProps) {
   // Derive tech type from panelId if applicable
-  const techType = (panelId.includes("-") && !panelId.startsWith("colos") && !panelId.startsWith("param"))
+  const techType = (panelId.includes("-") && !panelId.startsWith("param"))
     ? (panelId.split("-").pop() as TechnologyType)
     : null;
   const tech = techType ? project.technologies.find((t) => t.type === techType) : null;
 
   const panelTitles: Record<string, string> = {
-    colos: "Colo Sites",
     parameters: "Pricing Parameters",
   };
   if (techType) {
@@ -1279,10 +1215,6 @@ export function SidebarOverlayPanel({
 
         {/* Panel body */}
         <div className="flex-1 overflow-y-auto p-5">
-          {panelId === "colos" && (
-            <ColoManager coloSites={project.coloSites} onChange={onUpdateColoSites} />
-          )}
-
           {panelId === "parameters" && (
             <ParametersPanel
               params={project.inputParameters}
@@ -1307,17 +1239,8 @@ export function SidebarOverlayPanel({
             const removeRF = (id: string) => updateTech({ rfLineItems: rfItems.filter((i) => i.id !== id) });
             const updateRFDesc = (id: string, desc: string) =>
               updateTech({ rfLineItems: rfItems.map((i) => i.id === id ? { ...i, description: desc } : i) });
-            const updateRFVal = (id: string, coloId: string, val: number) =>
-              updateTech({ rfLineItems: rfItems.map((i) => i.id === id ? { ...i, values: { ...i.values, [coloId]: val } } : i) });
-            const copyToAll = (id: string) => {
-              const item = rfItems.find((i) => i.id === id);
-              const firstColo = project.coloSites[0];
-              if (!item || !firstColo) return;
-              const srcVal = item.values[firstColo.id] || 0;
-              const newVals: Record<string, number> = {};
-              project.coloSites.forEach((c) => { newVals[c.id] = srcVal; });
-              updateTech({ rfLineItems: rfItems.map((i) => i.id === id ? { ...i, values: newVals } : i) });
-            };
+            const updateRFVal = (id: string, val: number) =>
+              updateTech({ rfLineItems: rfItems.map((i) => i.id === id ? { ...i, values: { total: val } } : i) });
 
             return (
               <div className="space-y-3">
@@ -1327,9 +1250,7 @@ export function SidebarOverlayPanel({
                       <tr className="border-b border-border/50 bg-muted/20">
                         <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground w-8">#</th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">Description</th>
-                        {project.coloSites.map((c) => (
-                          <th key={c.id} className="px-2 py-2 text-center text-xs font-medium text-muted-foreground min-w-[120px]">{c.name}</th>
-                        ))}
+                        <th className="px-2 py-2 text-center text-xs font-medium text-muted-foreground min-w-[120px]">Value ($)</th>
                         <th className="px-2 py-2 w-16" />
                       </tr>
                     </thead>
@@ -1344,22 +1265,17 @@ export function SidebarOverlayPanel({
                               className="h-7 text-xs border-transparent hover:border-border/50 bg-transparent"
                             />
                           </td>
-                          {project.coloSites.map((c) => (
-                            <td key={c.id} className="px-2 py-1.5 text-center">
-                              <Input
-                                type="number" step="any"
-                                value={item.values[c.id] || ""}
-                                onChange={(e) => updateRFVal(item.id, c.id, parseFloat(e.target.value) || 0)}
-                                placeholder="-"
-                                className="h-7 w-28 bg-input/30 border-border/40 text-right text-xs font-mono tabular-nums rounded-md"
-                              />
-                            </td>
-                          ))}
+                          <td className="px-2 py-1.5 text-center">
+                            <Input
+                              type="number" step="any"
+                              value={item.values["total"] || ""}
+                              onChange={(e) => updateRFVal(item.id, parseFloat(e.target.value) || 0)}
+                              placeholder="-"
+                              className="h-7 w-28 bg-input/30 border-border/40 text-right text-xs font-mono tabular-nums rounded-md"
+                            />
+                          </td>
                           <td className="px-1 py-1.5">
                             <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity gap-0.5">
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground/50 hover:text-foreground" onClick={() => copyToAll(item.id)} title={`Copy ${project.coloSites[0]?.name || "first"} to all`}>
-                                <CopyCheck className="h-3 w-3" />
-                              </Button>
                               <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground/50 hover:text-destructive" onClick={() => removeRF(item.id)}>
                                 <Trash2 className="h-3 w-3" />
                               </Button>
@@ -1371,16 +1287,14 @@ export function SidebarOverlayPanel({
                         <tr className="border-t border-border/40 bg-muted/10">
                           <td className="px-3 py-1.5" />
                           <td className="px-3 py-1.5 text-xs font-medium text-muted-foreground text-right">Total</td>
-                          {project.coloSites.map((c) => (
-                            <td key={c.id} className="px-2 py-1.5 text-center text-xs font-mono tabular-nums font-medium">
-                              {formatCurrency(rfItems.reduce((s, i) => s + (i.values[c.id] || 0), 0))}
-                            </td>
-                          ))}
+                          <td className="px-2 py-1.5 text-center text-xs font-mono tabular-nums font-medium">
+                            {formatCurrency(rfItems.reduce((s, i) => s + (i.values["total"] || 0), 0))}
+                          </td>
                           <td />
                         </tr>
                       )}
                       <tr className="border-t border-border/30">
-                        <td colSpan={project.coloSites.length + 3} className="px-3 py-1.5">
+                        <td colSpan={4} className="px-3 py-1.5">
                           <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground/60 hover:text-primary" onClick={addRF}>
                             <Plus className="h-3 w-3 mr-1" /> Add Line Item
                           </Button>
@@ -1398,7 +1312,6 @@ export function SidebarOverlayPanel({
               <div className="flex justify-end">
                 <BomImportDialog
                   tech={tech}
-                  coloSites={project.coloSites}
                   onApply={onUpdateTechnology}
                   projectSpecificDetails={psd}
                   numberOfGuys={project.schedule.numberOfGuys}
@@ -1408,7 +1321,6 @@ export function SidebarOverlayPanel({
               </div>
               <InputValuesTable
                 tech={tech}
-                coloSites={project.coloSites}
                 onChange={onUpdateTechnology}
               />
             </div>
