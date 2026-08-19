@@ -38,14 +38,14 @@ export function NTIReportPreview({ tech, coloSites, materialContingency, laborCo
   const labMult = 1 + laborContingency / 100;
 
   const rfRows: Row[] = tech.rfLineItems
-    .filter((item) => coloSites.some((c) => (item.values[c.id] || 0) > 0))
+    .filter((item) => (item.values["total"] || 0) > 0)
     .map((item) => ({
       code: "RF",
       manufacturer: item.description || "RF Engineering",
       qty: 1,
       unitEquipPrice: 0,
       unitLaborHrs: 0,
-      rfServices: coloSites.reduce((s, c) => s + (item.values[c.id] || 0), 0),
+      rfServices: item.values["total"] || 0,
       matTotal: 0,
       laborTotal: 0,
       isRF: true,

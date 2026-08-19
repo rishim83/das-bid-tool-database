@@ -89,7 +89,7 @@ function migrateProject(p: Project): Project {
       })),
     };
   });
-  return { ...p, inputParameters, technologies };
+  return { ...p, inputParameters, technologies, coloSites: [{ id: "total", name: "" }] };
 }
 
 function SaveIndicator({ status }: { status: SaveStatus }) {
