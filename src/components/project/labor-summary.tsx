@@ -36,7 +36,7 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
     const tech = technologies.find((t) => t.type === type && t.enabled);
     if (!tech) return { type, totalHours: 0, contingencyHours: 0, billedHours: 0, totalDays: 0, totalWeeks: 0, breakdown: null as null, dynBreakdown: null as null };
 
-    // Build dynamic breakdown first — mirrors computeEffectiveLaborHoursPerColo exactly
+    // Build dynamic breakdown
     const rawBomHours = Object.values(tech.installLaborHours).reduce((s, h) => s + (h || 0), 0);
     const badgingHours = !!(psd?.badgingSafety) ? guys * 4 : 0;
     const materialHandlingHours = tech.materialHandlingHours ?? 0;
@@ -44,17 +44,21 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
     const additionalLaborItems = (tech.additionalLaborItems ?? []).filter((i) => (i.hours || 0) > 0);
     const additionalLaborHours = additionalLaborItems.reduce((s, i) => s + (i.hours || 0), 0);
     const baseHours = rawBomHours + badgingHours + materialHandlingHours + commissioningHours + additionalLaborHours;
-    const baseDays = baseHours > 0 ? baseHours / hpd : 0;
-    const shuttleHours   = !!(psd?.extras?.shuttleServices) && baseHours > 0 ? baseDays : 0;
-    const stretchHours   = !!(psd?.extras?.stretchAndFlex)  && baseHours > 0 ? baseDays * 0.5 : 0;
-    const compositeHours = Number(psd?.extras?.compositeCleanup ?? 0);
-    const liftHours      = !!(psd?.extras?.liftSpotters)    && baseHours > 0 ? (0.65 * baseHours) / guys : 0;
 
-    // Total effective hours: sum of all components (consistent with effectiveTechs in use-project.ts)
-    const totalHours = baseHours + shuttleHours + stretchHours + compositeHours + liftHours;
-    // Apply labor safety factor to get the billed-equivalent hours
-    const contingencyHours = totalHours * (laborSafety - 1);
-    const billedHours = totalHours * laborSafety;
+    // Contingency applied to base hours only
+    const contingencyHours = baseHours * (laborSafety - 1);
+    const billedBaseHours = baseHours * laborSafety;
+
+    // Extras computed from billedBaseHours (after contingency)
+    const billedDays = billedBaseHours > 0 ? billedBaseHours / hpd : 0;
+    const shuttleHours   = !!(psd?.extras?.shuttleServices) && billedBaseHours > 0 ? billedDays : 0;
+    const stretchHours   = !!(psd?.extras?.stretchAndFlex)  && billedBaseHours > 0 ? billedDays * 0.5 : 0;
+    const compositeHours = Number(psd?.extras?.compositeCleanup ?? 0);
+    const liftHours      = !!(psd?.extras?.liftSpotters)    && billedBaseHours > 0 ? (0.65 * billedBaseHours) / guys : 0;
+
+    // Total = billed base + post-contingency extras
+    const totalHours = billedBaseHours + shuttleHours + stretchHours + compositeHours + liftHours;
+    const billedHours = totalHours;
     const totalDays = billedHours / hpd / guys;
     const totalWeeks = totalDays / dpw;
 
@@ -70,7 +74,7 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
       liftSpotters: liftHours,
     };
 
-    return { type, totalHours, contingencyHours, billedHours, totalDays, totalWeeks, dynBreakdown };
+    return { type, baseHours, billedBaseHours, totalHours, contingencyHours, billedHours, totalDays, totalWeeks, dynBreakdown };
   });
 
   // Only show columns for enabled technologies
@@ -91,7 +95,8 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
   // Breakdown rows definition
   type BreakdownRow =
     | { kind: "divider" }
-    | { kind: "row"; label: string; getValue: (s: typeof scopeData[0]) => number };
+    | { kind: "row"; label: string; getValue: (s: typeof scopeData[0]) => number }
+    | { kind: "subtotal"; label: string; getValue: (s: typeof scopeData[0]) => number };
 
   const breakdownRows: BreakdownRow[] = [
     { kind: "row", label: "Import BOM", getValue: (s) => s.dynBreakdown?.bom ?? 0 },
@@ -103,11 +108,6 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
       label: `+ ${desc || "Additional Labor"}`,
       getValue: (s) => s.dynBreakdown?.additionalLaborItems.find((i) => i.description === desc)?.hours ?? 0,
     })),
-    { kind: "divider" },
-    { kind: "row", label: "+ Shuttle Services", getValue: (s) => s.dynBreakdown?.shuttleServices ?? 0 },
-    { kind: "row", label: "+ Stretch & Flex", getValue: (s) => s.dynBreakdown?.stretchAndFlex ?? 0 },
-    { kind: "row", label: "+ Composite Cleanup", getValue: (s) => s.dynBreakdown?.compositeCleanup ?? 0 },
-    { kind: "row", label: "+ Lift Spotters", getValue: (s) => s.dynBreakdown?.liftSpotters ?? 0 },
     ...(laborSafety !== 1 ? [
       { kind: "divider" as const },
       {
@@ -115,7 +115,17 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
         label: `+ Labor Contingency (×${laborSafety.toFixed(2)})`,
         getValue: (s: typeof scopeData[0]) => s.contingencyHours ?? 0,
       },
+      {
+        kind: "subtotal" as const,
+        label: "Billed Base Hours",
+        getValue: (s: typeof scopeData[0]) => s.billedBaseHours ?? 0,
+      },
     ] : []),
+    { kind: "divider" as const },
+    { kind: "row", label: "+ Shuttle Services", getValue: (s) => s.dynBreakdown?.shuttleServices ?? 0 },
+    { kind: "row", label: "+ Stretch & Flex", getValue: (s) => s.dynBreakdown?.stretchAndFlex ?? 0 },
+    { kind: "row", label: "+ Composite Cleanup", getValue: (s) => s.dynBreakdown?.compositeCleanup ?? 0 },
+    { kind: "row", label: "+ Lift Spotters", getValue: (s) => s.dynBreakdown?.liftSpotters ?? 0 },
   ];
 
   // Only show breakdown rows that have at least one non-zero value (excluding dividers)
@@ -186,6 +196,21 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
                 return (
                   <tr key={`div-${i}`} className="border-t border-border/15">
                     <td colSpan={visibleScopeData.length + 1} className="h-px p-0" />
+                  </tr>
+                );
+              }
+              if (row.kind === "subtotal") {
+                return (
+                  <tr key={row.label} className="border-t border-border/25 bg-muted/20">
+                    <td className="px-4 py-1.5 pl-10 text-xs font-semibold text-muted-foreground">{row.label}</td>
+                    {visibleScopeData.map((s) => {
+                      const val = s.dynBreakdown ? row.getValue(s) : null;
+                      return (
+                        <td key={s.type} className="px-4 py-1.5 text-right font-mono text-xs tabular-nums font-semibold text-muted-foreground">
+                          {val === null || val === 0 ? "—" : fmt(val, 1)}
+                        </td>
+                      );
+                    })}
                   </tr>
                 );
               }

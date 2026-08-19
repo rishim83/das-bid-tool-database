@@ -198,7 +198,7 @@ function QuoteDocument({ project }: { project: Project }) {
       // Per-tech labor breakdown values
       const laborSafety = project.inputParameters.laborSafety ?? 1;
       const hourlyRate = project.inputParameters.hourlyRate ?? 0;
-      const extras = computeLaborExtrasBreakdown(tech, project.projectSpecificDetails, numGuys, hpd);
+      const extras = computeLaborExtrasBreakdown(tech, project.projectSpecificDetails, numGuys, hpd, laborSafety);
       const techLaborSubItems = [
         { label: "Commissioning Support", baseCost: extras.commissioningHours * hourlyRate },
         { label: "Shuttle Services",      baseCost: extras.shuttleHours * hourlyRate },
@@ -435,13 +435,14 @@ function QuoteDocument({ project }: { project: Project }) {
                 additionalMaterials={(tech.additionalMaterials ?? []).filter((m) => m.value > 0)}
                 laborSubItems={(() => {
                   const rate = project.inputParameters.hourlyRate ?? 0;
-                  const ex = computeLaborExtrasBreakdown(tech, project.projectSpecificDetails, numGuys, hpd);
+                  const ls = project.inputParameters.laborSafety ?? 1;
+                  const ex = computeLaborExtrasBreakdown(tech, project.projectSpecificDetails, numGuys, hpd, ls);
                   return [
                     { label: "Commissioning Support", baseCost: ex.commissioningHours * rate },
-                    { label: "Shuttle Services",      baseCost: ex.shuttleHours * rate },
-                    { label: "Stretch & Flex",        baseCost: ex.stretchHours * rate },
-                    { label: "Composite Cleanup",     baseCost: ex.compositeHours * rate },
-                    { label: "Lift Spotters",         baseCost: ex.liftHours * rate },
+                    { label: "Shuttle Services",      baseCost: ex.shuttleHours * rate,    postContingency: true },
+                    { label: "Stretch & Flex",        baseCost: ex.stretchHours * rate,    postContingency: true },
+                    { label: "Composite Cleanup",     baseCost: ex.compositeHours * rate,  postContingency: true },
+                    { label: "Lift Spotters",         baseCost: ex.liftHours * rate,       postContingency: true },
                   ].filter((s) => s.baseCost > 0);
                 })()}
               />

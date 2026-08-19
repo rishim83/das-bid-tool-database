@@ -49,8 +49,9 @@ interface Props {
   laborSafety?: number;
   equipMarkUp?: number;
   additionalMaterials?: AdditionalMaterial[];
-  /** Pre-contingency (hourlyRate × hours, no laborSafety) named sub-items under Install */
-  laborSubItems?: { label: string; baseCost: number }[];
+  /** Named sub-items under Install. Pre-contingency items shown before the contingency row;
+   *  post-contingency items (shuttle/stretch/lift) shown after — their cost is already post-safety. */
+  laborSubItems?: { label: string; baseCost: number; postContingency?: boolean }[];
 }
 
 function FormulaCell({
@@ -150,28 +151,37 @@ export function QuoteTable({
                 const subRows: SubRowDef[] = [];
 
                 if (isInstall) {
-                  // Base = all effective hours × hourlyRate (before contingency)
-                  const baseLaborTotal = laborSafety !== 0 ? line.totalPrice / laborSafety : line.totalPrice;
-                  // Sum of named sub-item base costs (pre-contingency)
-                  const activeSubItems = laborSubItems.filter((s) => s.baseCost > 0);
-                  const subItemBaseTotal = activeSubItems.reduce((sum, s) => sum + s.baseCost, 0);
-                  const coreInstallBase = baseLaborTotal - subItemBaseTotal;
+                  // Separate pre-contingency items (commissioning etc.) from post-contingency (shuttle/stretch/lift)
+                  const preContingencyItems = laborSubItems.filter((s) => s.baseCost > 0 && !s.postContingency);
+                  const postContingencyItems = laborSubItems.filter((s) => s.baseCost > 0 && s.postContingency);
 
-                  // Install Labor row (all hours minus named sub-items, pre-contingency)
+                  // baseLaborTotal = total effective hours × rate (pre-safety), includes pre-safety shuttle contribution
+                  const baseLaborTotal = laborSafety !== 0 ? line.totalPrice / laborSafety : line.totalPrice;
+
+                  // Remove post-contingency items' pre-safety contribution from baseLaborTotal so contingency math is clean
+                  const postContingencyPreContribution = postContingencyItems.reduce((sum, s) => {
+                    return sum + (laborSafety !== 0 ? s.baseCost / laborSafety : 0);
+                  }, 0);
+                  const adjustedBaseLaborTotal = baseLaborTotal - postContingencyPreContribution;
+
+                  const preContingencySubItemTotal = preContingencyItems.reduce((sum, s) => sum + s.baseCost, 0);
+                  const coreInstallBase = adjustedBaseLaborTotal - preContingencySubItemTotal;
+
+                  // Install Labor row (base hours minus named pre-contingency sub-items)
                   subRows.push({
-                    label: activeSubItems.length > 0 ? "Install Labor" : (laborSafety !== 1 ? "Install Labor Base" : "Install Labor"),
+                    label: preContingencyItems.length > 0 || postContingencyItems.length > 0
+                      ? "Install Labor"
+                      : (laborSafety !== 1 ? "Install Labor Base" : "Install Labor"),
                     formula: "Labor Hours × Hourly Rate",
                     getValue: (coloId) => {
                       const ratio = line.totalPrice > 0 ? (line.values[coloId] || 0) / line.totalPrice : 1 / coloSites.length;
-                      return activeSubItems.length > 0
-                        ? ratio * coreInstallBase
-                        : laborSafety !== 0 ? (line.values[coloId] || 0) / laborSafety : line.values[coloId] || 0;
+                      return ratio * coreInstallBase;
                     },
-                    total: activeSubItems.length > 0 ? coreInstallBase : baseLaborTotal,
+                    total: coreInstallBase,
                   });
 
-                  // Named sub-items (commissioning, shuttle, etc.) — shown at pre-contingency cost
-                  activeSubItems.forEach((subItem) => {
+                  // Pre-contingency named sub-items (commissioning, etc.)
+                  preContingencyItems.forEach((subItem) => {
                     subRows.push({
                       label: subItem.label,
                       formula: "Hours × Hourly Rate",
@@ -183,18 +193,31 @@ export function QuoteTable({
                     });
                   });
 
-                  // Labor Contingency row — covers all hours uniformly
+                  // Labor Contingency row — covers base hours only
                   if (laborSafety !== 1) {
                     subRows.push({
                       label: `+ Labor Contingency (×${laborSafety.toFixed(2)})`,
-                      formula: "Base × (Labor Contingency − 1)",
+                      formula: "Base Labor × (Labor Contingency − 1)",
                       getValue: (coloId) => {
-                        const base = laborSafety !== 0 ? (line.values[coloId] || 0) / laborSafety : 0;
-                        return base * (laborSafety - 1);
+                        const ratio = line.totalPrice > 0 ? (line.values[coloId] || 0) / line.totalPrice : 1 / coloSites.length;
+                        return ratio * adjustedBaseLaborTotal * (laborSafety - 1);
                       },
-                      total: baseLaborTotal * (laborSafety - 1),
+                      total: adjustedBaseLaborTotal * (laborSafety - 1),
                     });
                   }
+
+                  // Post-contingency items (shuttle/stretch/lift) — shown after contingency at their billed cost
+                  postContingencyItems.forEach((subItem) => {
+                    subRows.push({
+                      label: subItem.label,
+                      formula: "Billed Base Hours × Rate (post-contingency)",
+                      getValue: (coloId) => {
+                        const ratio = line.totalPrice > 0 ? (line.values[coloId] || 0) / line.totalPrice : 1 / coloSites.length;
+                        return ratio * subItem.baseCost;
+                      },
+                      total: subItem.baseCost,
+                    });
+                  });
                   // Install Travel (line 6 folded in)
                   if (installTravelLine) {
                     subRows.push({

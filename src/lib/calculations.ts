@@ -194,6 +194,7 @@ export function computeLaborExtrasBreakdown(
   psd: ProjectSpecificDetails | undefined,
   numberOfGuys: number,
   hoursPerDay: number,
+  laborSafety: number = 1,
 ): LaborExtrasBreakdown {
   const rawHoursPerColo = tech.installLaborHours;
   const totalBomHours = Object.values(rawHoursPerColo).reduce((s, h) => s + (h || 0), 0);
@@ -211,12 +212,14 @@ export function computeLaborExtrasBreakdown(
   }
 
   const hpd = hoursPerDay || 8;
-  const baseDays = baseHours > 0 ? baseHours / hpd : 0;
   const guys = Math.max(numberOfGuys, 1);
-  const shuttleHours   = !!(psd?.extras?.shuttleServices) && baseHours > 0 ? baseDays : 0;
-  const stretchHours   = !!(psd?.extras?.stretchAndFlex)  && baseHours > 0 ? baseDays * 0.5 : 0;
+  // Extras are computed from billed base hours (after contingency is applied to base)
+  const billedBaseHours = baseHours * laborSafety;
+  const billedDays = billedBaseHours / hpd;
+  const shuttleHours   = !!(psd?.extras?.shuttleServices) && billedBaseHours > 0 ? billedDays : 0;
+  const stretchHours   = !!(psd?.extras?.stretchAndFlex)  && billedBaseHours > 0 ? billedDays * 0.5 : 0;
   const compositeHours = Number(psd?.extras?.compositeCleanup ?? 0);
-  const liftHours      = !!(psd?.extras?.liftSpotters)    && baseHours > 0 ? (0.65 * baseHours) / guys : 0;
+  const liftHours      = !!(psd?.extras?.liftSpotters)    && billedBaseHours > 0 ? (0.65 * billedBaseHours) / guys : 0;
 
   return { commissioningHours, shuttleHours, stretchHours, compositeHours, liftHours };
 }

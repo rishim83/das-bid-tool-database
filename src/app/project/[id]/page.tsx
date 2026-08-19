@@ -1105,13 +1105,14 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
                           additionalMaterials={(tech.additionalMaterials ?? []).filter((m) => m.value > 0)}
                           laborSubItems={(() => {
                             const rate = project.inputParameters.hourlyRate ?? 0;
-                            const extras = computeLaborExtrasBreakdown(tech, psd, project.schedule.numberOfGuys, project.inputParameters.hoursPerDay ?? 8);
+                            const ls = project.inputParameters.laborSafety ?? 1;
+                            const extras = computeLaborExtrasBreakdown(tech, psd, project.schedule.numberOfGuys, project.inputParameters.hoursPerDay ?? 8, ls);
                             return [
                               { label: "Commissioning Support", baseCost: extras.commissioningHours * rate },
-                              { label: "Shuttle Services",      baseCost: extras.shuttleHours * rate },
-                              { label: "Stretch & Flex",        baseCost: extras.stretchHours * rate },
-                              { label: "Composite Cleanup",     baseCost: extras.compositeHours * rate },
-                              { label: "Lift Spotters",         baseCost: extras.liftHours * rate },
+                              { label: "Shuttle Services",      baseCost: extras.shuttleHours * rate,    postContingency: true },
+                              { label: "Stretch & Flex",        baseCost: extras.stretchHours * rate,    postContingency: true },
+                              { label: "Composite Cleanup",     baseCost: extras.compositeHours * rate,  postContingency: true },
+                              { label: "Lift Spotters",         baseCost: extras.liftHours * rate,       postContingency: true },
                             ].filter((s) => s.baseCost > 0);
                           })()}
                         />
