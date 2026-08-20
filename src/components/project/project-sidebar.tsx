@@ -823,8 +823,8 @@ export function ProjectSidebar({
       })()}
 
 
-      {/* ── PER-TECH INPUTS ──────────────────────────── */}
-      <SidebarSection
+      {/* ── PER-TECH INPUTS (NC only) ────────────────── */}
+      {!isNTI && <SidebarSection
         title="Technology Inputs"
         icon={<PackageOpen className="h-3.5 w-3.5" />}
         defaultOpen
@@ -1143,7 +1143,7 @@ export function ProjectSidebar({
             </div>
           );
         })}
-      </SidebarSection>
+      </SidebarSection>}
 
     </div>
   );
