@@ -55,7 +55,9 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
     const billedDays = billedBaseHours > 0 ? billedBaseHours / hpd : 0;
     const shuttleHours   = !!(psd?.extras?.shuttleServices) && billedBaseHours > 0 ? billedDays : 0;
     const stretchHours   = !!(psd?.extras?.stretchAndFlex)  && billedBaseHours > 0 ? billedDays * 0.5 : 0;
-    const liftHours      = !!(psd?.extras?.liftSpotters)    && billedBaseHours > 0 ? (0.65 * billedBaseHours) / guys : 0;
+    const tplsLS = psd?.extras?.techsPerLiftSpotter ?? 0;
+    const liftXLS = tplsLS > 0 ? Math.ceil(guys / tplsLS) : 1;
+    const liftHours      = !!(psd?.extras?.liftSpotters)    && billedBaseHours > 0 ? (0.65 * billedBaseHours) / guys * liftXLS : 0;
 
     // Total = billed base + post-contingency extras (shuttle/stretch/lift)
     const totalHours = billedBaseHours + shuttleHours + stretchHours + liftHours;

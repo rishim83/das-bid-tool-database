@@ -296,7 +296,9 @@ export function BomImportDialog({
   const shuttleHours = !!(projectSpecificDetails?.extras?.shuttleServices) && baseHours > 0 ? baseDays : 0;
   const stretchHours = !!(projectSpecificDetails?.extras?.stretchAndFlex) && baseHours > 0 ? baseDays * 0.5 : 0;
   const compositeHours = tech.compositeCleanup ?? 0;
-  const liftHours = !!(projectSpecificDetails?.extras?.liftSpotters) && baseHours > 0 ? (0.65 * baseHours) / guys : 0;
+  const tplsBom = projectSpecificDetails?.extras?.techsPerLiftSpotter ?? 0;
+  const liftXBom = tplsBom > 0 ? Math.ceil(guys / tplsBom) : 1;
+  const liftHours = !!(projectSpecificDetails?.extras?.liftSpotters) && baseHours > 0 ? (0.65 * baseHours) / guys * liftXBom : 0;
 
   // Final total (baked into installLaborHours on Apply)
   const totalHours = baseHours + shuttleHours + stretchHours + compositeHours + liftHours;
@@ -504,7 +506,7 @@ export function BomImportDialog({
         ...(shuttleHours > 0   ? [["SHUTTLE", `Shuttle Services (${baseDays.toFixed(1)} project days × 1 hr)`,        "", 1, "", "", 0, shuttleHours   * labMult, "", 0, shuttleHours   * labMult, ""]] : []),
         ...(stretchHours > 0   ? [["S&F",     `Stretch & Flex (${baseDays.toFixed(1)} project days × 0.5 hrs)`,       "", 1, "", "", 0, stretchHours   * labMult, "", 0, stretchHours   * labMult, ""]] : []),
         ...(compositeHours > 0 ? [["CLEANUP", `Composite Cleanup (${baseWeeks.toFixed(1)} wks × 8 hrs)`,              "", 1, "", "", 0, compositeHours * labMult, "", 0, compositeHours * labMult, ""]] : []),
-        ...(liftHours > 0      ? [["LIFT",    `Lift Spotters (65% × ${baseHours.toFixed(1)} hrs ÷ ${guys} guys)`,     "", 1, "", "", 0, liftHours      * labMult, "", 0, liftHours      * labMult, ""]] : []),
+        ...(liftHours > 0      ? [["LIFT",    `Lift Spotters (65% × ${baseHours.toFixed(1)} hrs ÷ ${guys} guys × ${liftXBom} spotters)`, "", 1, "", "", 0, liftHours * labMult, "", 0, liftHours * labMult, ""]] : []),
         // Water & Ice
         ...((tech.waterAndIce ?? 0) > 0
           ? [["W&I", "Water & Ice (Tech Level)", "", 1, "", "", tech.waterAndIce, 0, "", tech.waterAndIce, 0, ""]]
@@ -726,7 +728,7 @@ export function BomImportDialog({
                       { label: `+ Shuttle Services (${baseDays.toFixed(1)} days)`, hours: shuttleHours, always: false },
                       { label: `+ Stretch & Flex (${baseDays.toFixed(1)} days × 0.5)`, hours: stretchHours, always: false },
                       { label: `+ Composite Cleanup (${baseWeeks.toFixed(1)} wks × 8)`, hours: compositeHours, always: false },
-                      { label: `+ Lift Spotters (65% × base ÷ ${guys})`, hours: liftHours, always: false },
+                      { label: `+ Lift Spotters (65% × base ÷ ${guys} × ${liftXBom})`, hours: liftHours, always: false },
                     ]
                       .filter((row) => row.always || row.hours > 0)
                       .map((row, i) =>

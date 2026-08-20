@@ -769,8 +769,29 @@ export function ProjectSidebar({
             label="Lift Spotters"
             checked={!!psd.extras?.liftSpotters}
             onChange={(v) => onUpdateProjectSpecificDetails({ ...psd, extras: { ...psd.extras, liftSpotters: v } })}
-            tooltip="Adds 65% of Billed Base Hours ÷ # of Guys"
+            tooltip="Adds 65% of Billed Base Hours ÷ # of Guys × # of Spotters"
           />
+          {!!psd.extras?.liftSpotters && (() => {
+            const tpls = psd.extras?.techsPerLiftSpotter ?? 0;
+            const numGuys = fullSchedule.numberOfGuys;
+            const spottersRequired = tpls > 0 ? Math.ceil(numGuys / tpls) : null;
+            return (
+              <div className="px-3 pb-1.5 space-y-1.5">
+                <InlineField
+                  label="Techs per spotter"
+                  value={tpls}
+                  onChange={(v) => onUpdateProjectSpecificDetails({ ...psd, extras: { ...psd.extras, techsPerLiftSpotter: v } })}
+                  step="1"
+                />
+                {spottersRequired !== null && (
+                  <div className="flex items-center justify-between px-0 py-0.5">
+                    <span className="text-[10.5px] text-white/70">Spotters required</span>
+                    <span className="text-xs font-mono font-semibold text-primary">{spottersRequired}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </SidebarSection>
       )}
 

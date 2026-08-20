@@ -549,7 +549,9 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
       const expBaseWeeks = expBaseDays > 0 ? expBaseDays / expDpw : 0;
       const expShuttle   = !!(expPsd?.extras?.shuttleServices) && expBilledBase > 0 ? expBaseDays : 0;
       const expStretch   = !!(expPsd?.extras?.stretchAndFlex)  && expBilledBase > 0 ? expBaseDays * 0.5 : 0;
-      const expLift      = !!(expPsd?.extras?.liftSpotters) && expBilledBase > 0 ? (0.65 * expBilledBase) / expGuys : 0;
+      const expTpls = expPsd?.extras?.techsPerLiftSpotter ?? 0;
+      const expLiftX = expTpls > 0 ? Math.ceil(expGuys / expTpls) : 1;
+      const expLift      = !!(expPsd?.extras?.liftSpotters) && expBilledBase > 0 ? (0.65 * expBilledBase) / expGuys * expLiftX : 0;
       const expEffective = expBilledBase + expShuttle + expStretch + expLift;
       const expContingency = expBase * (expSafety - 1);
       const expBilled    = expEffective;

@@ -201,6 +201,7 @@ export interface ProjectExtras {
   stretchAndFlex: boolean;
   compositeCleanup: number;  // direct hours input
   liftSpotters: boolean;
+  techsPerLiftSpotter: number;  // 0 = not set (uses legacy formula); >0 enables x = ceil(guys / techsPerLiftSpotter)
   miscMaterials: number;
   miscLabor: number;
   projectContingency: number;
@@ -231,6 +232,7 @@ export const DEFAULT_PROJECT_EXTRAS: ProjectExtras = {
   stretchAndFlex: false,
   compositeCleanup: 0,
   liftSpotters: false,
+  techsPerLiftSpotter: 0,
   miscMaterials: 0,
   miscLabor: 0,
   projectContingency: 0,

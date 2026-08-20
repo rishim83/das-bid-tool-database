@@ -217,7 +217,9 @@ export function computeLaborExtrasBreakdown(
   const billedDays = billedBaseHours / hpd;
   const shuttleHours   = !!(psd?.extras?.shuttleServices) && billedBaseHours > 0 ? billedDays : 0;
   const stretchHours   = !!(psd?.extras?.stretchAndFlex)  && billedBaseHours > 0 ? billedDays * 0.5 : 0;
-  const liftHours      = !!(psd?.extras?.liftSpotters)    && billedBaseHours > 0 ? (0.65 * billedBaseHours) / guys : 0;
+  const tplsB = psd?.extras?.techsPerLiftSpotter ?? 0;
+  const liftX = tplsB > 0 ? Math.ceil(guys / tplsB) : 1;
+  const liftHours      = !!(psd?.extras?.liftSpotters)    && billedBaseHours > 0 ? (0.65 * billedBaseHours) / guys * liftX : 0;
 
   return { commissioningHours, shuttleHours, stretchHours, compositeHours, liftHours };
 }
@@ -253,7 +255,9 @@ export function computeEffectiveLaborHoursPerColo(
   const guys = Math.max(numberOfGuys, 1);
   const shuttleHours   = !!(psd?.extras?.shuttleServices) && baseHours > 0 ? baseDays : 0;
   const stretchHours   = !!(psd?.extras?.stretchAndFlex)  && baseHours > 0 ? baseDays * 0.5 : 0;
-  const liftHours      = !!(psd?.extras?.liftSpotters)    && baseHours > 0 ? (0.65 * baseHours) / guys : 0;
+  const tpls = psd?.extras?.techsPerLiftSpotter ?? 0;
+  const liftX = tpls > 0 ? Math.ceil(guys / tpls) : 1;
+  const liftHours      = !!(psd?.extras?.liftSpotters)    && baseHours > 0 ? (0.65 * baseHours) / guys * liftX : 0;
 
   const totalEffectiveHours = baseHours + shuttleHours + stretchHours + liftHours;
 
