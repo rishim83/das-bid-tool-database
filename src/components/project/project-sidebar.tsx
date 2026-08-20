@@ -776,19 +776,25 @@ export function ProjectSidebar({
             const numGuys = fullSchedule.numberOfGuys;
             const spottersRequired = tpls > 0 ? Math.ceil(numGuys / tpls) : null;
             return (
-              <div className="px-3 pb-1.5 space-y-1.5">
-                <InlineField
-                  label="Techs per spotter"
-                  value={tpls}
-                  onChange={(v) => onUpdateProjectSpecificDetails({ ...psd, extras: { ...psd.extras, techsPerLiftSpotter: v } })}
-                  step="1"
-                />
-                {spottersRequired !== null && (
-                  <div className="flex items-center justify-between px-0 py-0.5">
-                    <span className="text-[10.5px] text-white/70">Spotters required</span>
-                    <span className="text-xs font-mono font-semibold text-primary">{spottersRequired}</span>
-                  </div>
-                )}
+              <div className="ml-6 mr-3 mb-2 border border-border/30 rounded-md bg-white/[0.03] overflow-hidden">
+                <div className="flex items-center justify-between px-3 py-1.5 gap-2 border-b border-border/20">
+                  <span className="text-[10.5px] text-white/70 shrink-0">Techs per spotter</span>
+                  <input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={tpls || ""}
+                    placeholder="—"
+                    onChange={(e) => onUpdateProjectSpecificDetails({ ...psd, extras: { ...psd.extras, techsPerLiftSpotter: parseInt(e.target.value) || 0 } })}
+                    className="h-6 w-16 text-right text-xs font-mono tabular-nums bg-transparent border-0 focus:outline-none text-white/90"
+                  />
+                </div>
+                <div className="flex items-center justify-between px-3 py-1.5">
+                  <span className="text-[10.5px] text-white/50">Spotters required</span>
+                  <span className="text-xs font-mono font-semibold text-primary">
+                    {spottersRequired !== null ? spottersRequired : "—"}
+                  </span>
+                </div>
               </div>
             );
           })()}
