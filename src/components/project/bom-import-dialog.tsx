@@ -84,7 +84,7 @@ export function BomImportDialog({
 
   const [priceOverrides, setPriceOverrides] = useState<Record<string, number>>({});
   const [laborOverrides, setLaborOverrides] = useState<Record<string, number>>({});
-  // codes[i] = 4-element array of install code strings for unmatched item at index i
+  // codes[i] = 5-element array of install code strings for unmatched item at index i
   const [unmatchedCodes, setUnmatchedCodes] = useState<Record<number, string[]>>({});
 
   // Labor code lookup maps built from the loaded database
@@ -203,7 +203,7 @@ export function BomImportDialog({
   // Update one of the 4 install code inputs for an unmatched item,
   // then auto-compute labor hours from the updated codes.
   const updateUnmatchedCode = (itemIndex: number, codeIndex: number, value: string) => {
-    const current = unmatchedCodes[itemIndex] ?? ["", "", "", ""];
+    const current = unmatchedCodes[itemIndex] ?? ["", "", "", "", ""];
     const next = [...current];
     next[codeIndex] = value;
     setUnmatchedCodes((prev) => ({ ...prev, [itemIndex]: next }));
@@ -886,13 +886,14 @@ export function BomImportDialog({
                             <th className="text-center px-2 py-2 font-medium text-muted-foreground whitespace-nowrap">Code 2</th>
                             <th className="text-center px-2 py-2 font-medium text-muted-foreground whitespace-nowrap">Code 3</th>
                             <th className="text-center px-2 py-2 font-medium text-muted-foreground whitespace-nowrap">Code 4</th>
+                            <th className="text-center px-2 py-2 font-medium text-muted-foreground whitespace-nowrap">Code 5</th>
                             <th className="text-right px-3 py-2 font-medium text-muted-foreground whitespace-nowrap">Labor Hrs</th>
                             <th className="px-3 py-2" />
                           </tr>
                         </thead>
                         <tbody>
                           {unmatched.map((item, i) => {
-                            const codes = unmatchedCodes[i] ?? ["", "", "", ""];
+                            const codes = unmatchedCodes[i] ?? ["", "", "", "", ""];
                             return (
                               <tr
                                 key={i}
@@ -924,7 +925,7 @@ export function BomImportDialog({
                                     className="h-6 w-24 text-xs text-right ml-auto"
                                   />
                                 </td>
-                                {[0, 1, 2, 3].map((ci) => (
+                                {[0, 1, 2, 3, 4].map((ci) => (
                                   <td key={ci} className="px-2 py-1.5">
                                     <Input
                                       type="text"
