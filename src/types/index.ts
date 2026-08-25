@@ -131,6 +131,7 @@ export interface TechnologyConfig {
   laborHoursBreakdown?: LaborHoursBreakdown;      // snapshot set when BOM is applied
   equipmentCostBreakdown?: EquipmentCostBreakdown; // snapshot set when BOM is applied
   bomReportRows?: BOMReportRow[];                  // per-item rows stored when BOM is applied
+  bomFileName?: string;                            // filename of the last applied BOM
   // Per-technology project details
   materialHandlingHours: number;
   commissioningSupport: number;

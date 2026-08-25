@@ -71,6 +71,7 @@ export function BomImportDialog({
   const [analysis, setAnalysis] = useState<BOMAnalysisResult | null>(null);
   const [unmatched, setUnmatched] = useState<UnmatchedBOMItem[]>([]);
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load database on mount and whenever dialog opens
@@ -133,6 +134,7 @@ export function BomImportDialog({
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !db) return;
+    setUploadedFileName(file.name);
     if (fileInputRef.current) fileInputRef.current.value = "";
 
     setLoading(true);
@@ -364,7 +366,7 @@ export function BomImportDialog({
       ...(tech.additionalMaterials ?? []).filter((m) => (m.value || 0) > 0).map((m) => ({ code: "ADDL-MAT", manufacturer: m.name || "Additional Material", qty: 1, unitEquipPrice: m.value, unitLaborHrs: 0, totalEquipPrice: m.value, totalLaborHrs: 0 })),
     ];
 
-    onApply({ ...tech, installLaborHours, equipmentCost, laborHoursBreakdown, equipmentCostBreakdown, bomReportRows });
+    onApply({ ...tech, installLaborHours, equipmentCost, laborHoursBreakdown, equipmentCostBreakdown, bomReportRows, bomFileName: uploadedFileName || tech.bomFileName });
     toast.success(
       `BOM applied — ${hoursToStore.toFixed(1)} BOM hrs · ${formatCurrency(equipCostToStore)} equipment`
     );

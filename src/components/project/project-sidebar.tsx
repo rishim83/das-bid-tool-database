@@ -1353,15 +1353,23 @@ export function SidebarOverlayPanel({
 
           {panelId.startsWith("input-values-") && tech && (
             <div className="space-y-4">
-              <div className="flex justify-end">
-                <BomImportDialog
-                  tech={tech}
-                  onApply={onUpdateTechnology}
-                  projectSpecificDetails={psd}
-                  numberOfGuys={project.schedule.numberOfGuys}
-                  hoursPerDay={project.inputParameters.hoursPerDay ?? 8}
-                  daysPerWeek={project.inputParameters.daysPerWeek ?? 5}
-                />
+              <div className="flex flex-col gap-1.5">
+                <div className="flex justify-end">
+                  <BomImportDialog
+                    tech={tech}
+                    onApply={onUpdateTechnology}
+                    projectSpecificDetails={psd}
+                    numberOfGuys={project.schedule.numberOfGuys}
+                    hoursPerDay={project.inputParameters.hoursPerDay ?? 8}
+                    daysPerWeek={project.inputParameters.daysPerWeek ?? 5}
+                  />
+                </div>
+                {tech.bomFileName && (
+                  <div className="flex items-center gap-1.5 px-1 text-[10.5px] text-white/50">
+                    <span className="shrink-0">Uploaded:</span>
+                    <span className="truncate font-mono text-white/70" title={tech.bomFileName}>{tech.bomFileName}</span>
+                  </div>
+                )}
               </div>
               <InputValuesTable
                 tech={tech}
