@@ -310,7 +310,7 @@ export const DEFAULT_INSTALL_TRAVEL: InstallTravelConfig = {
   roundTrips: 1,
   airfarePricePerTrip: 500,
   lodgingRatePerNight: 175,
-  carRentalPerDay: 0,
+  carRentalPerDay: 85,
   fuel: 500,
 };
 
@@ -318,7 +318,7 @@ export const DEFAULT_PM_TRAVEL: PMTravelEstimate = {
   daysPerTrip: 3,
   flight: 500,
   hotelPerDay: 150,
-  carRentalPerDay: 100,
+  carRentalPerDay: 85,
   perDiemPerDay: 100,
 };
 
