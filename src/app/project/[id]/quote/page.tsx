@@ -286,7 +286,7 @@ function QuoteDocument({ project }: { project: Project }) {
 
           if (laborSafety !== 1) {
             const contingencyTotal = baseLaborTotal * (laborSafety - 1);
-            const contRow: (string | number)[] = ["", `  └ Labor Contingency (×${laborSafety.toFixed(2)})`];
+            const contRow: (string | number)[] = ["", `  └ Labor Contingency (${Math.round((laborSafety - 1) * 10000) / 100}%)`];
             if (!isSingleColo) {
               coloSites.forEach((c) => {
                 const base = line.values[c.id] || 0;

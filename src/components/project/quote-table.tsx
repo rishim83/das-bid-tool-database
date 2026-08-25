@@ -196,7 +196,7 @@ export function QuoteTable({
                   // Labor Contingency row — covers base hours only
                   if (laborSafety !== 1) {
                     subRows.push({
-                      label: `+ Labor Contingency (×${laborSafety.toFixed(2)})`,
+                      label: `+ Labor Contingency (${Math.round((laborSafety - 1) * 10000) / 100}%)`,
                       formula: "Base Labor × (Labor Contingency − 1)",
                       getValue: (coloId) => {
                         const ratio = line.totalPrice > 0 ? (line.values[coloId] || 0) / line.totalPrice : 1 / coloSites.length;
@@ -287,7 +287,7 @@ export function QuoteTable({
                     // Contingency on combined base
                     if (materialSafety !== 1) {
                       subRows.push({
-                        label: `Material Contingency (×${materialSafety.toFixed(2)})`,
+                        label: `Material Contingency (${Math.round((materialSafety - 1) * 10000) / 100}%)`,
                         formula: `(Equipment Base + Additional Materials) × (Material Contingency − 1)`,
                         getValue: (coloId) => {
                           const raw = divisor !== 0 ? (line.values[coloId] || 0) / divisor : line.values[coloId] || 0;

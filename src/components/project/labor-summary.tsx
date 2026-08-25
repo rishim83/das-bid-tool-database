@@ -116,7 +116,7 @@ export function LaborSummary({ technologies, hoursPerDay, daysPerWeek, numberOfG
       { kind: "divider" as const },
       {
         kind: "row" as const,
-        label: `+ Labor Contingency (×${laborSafety.toFixed(2)})`,
+        label: `+ Labor Contingency (${Math.round((laborSafety - 1) * 10000) / 100}%)`,
         getValue: (s: typeof scopeData[0]) => s.contingencyHours ?? 0,
       },
       {

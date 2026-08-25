@@ -567,7 +567,7 @@ function ProjectWorksheet({ initialProject }: { initialProject: Project }) {
       if (expShuttle > 0)   laborItems.push(["Shuttle Services", expShuttle]);
       if (expStretch > 0)   laborItems.push(["Stretch & Flex", expStretch]);
       if (expLift > 0)      laborItems.push(["Lift Spotters", expLift]);
-      if (expContingency > 0) laborItems.push([`Labor Contingency (×${expSafety.toFixed(2)})`, expContingency]);
+      if (expContingency > 0) laborItems.push([`Labor Contingency (${Math.round((expSafety - 1) * 10000) / 100}%)`, expContingency]);
       const totalLaborHrs = expBilled;
       laborItems.forEach(([label, hrs], i) => {
         const r = dataRow(ws, [label, hrs, null, null, null], i % 2 === 1);
