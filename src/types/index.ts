@@ -286,7 +286,7 @@ export const DEFAULT_INPUT_PARAMETERS: InputParameters = {
   travelPerDay: 80,
   materialSafety: 1.05,
   laborSafety: 1.05,
-  pmOnJob: 0.75,
+  pmOnJob: 1.0,
   pmHourlyRate: 100,
   buyPMHourlyRate: 95,
   nonUnionRate: 130,
